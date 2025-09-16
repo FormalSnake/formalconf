@@ -192,3 +192,4 @@ fi
 
 echo ""
 echo "=== Sync Complete ==="
+exit 0
