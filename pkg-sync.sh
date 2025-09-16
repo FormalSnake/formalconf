@@ -34,6 +34,9 @@ if ! command -v brew >/dev/null 2>&1; then
     exit 1
 fi
 
+# Clear the console
+clear
+
 echo "=== Package Sync ==="
 echo "Config file: $JSON_FILE"
 echo ""
