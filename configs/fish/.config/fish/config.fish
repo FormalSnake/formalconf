@@ -29,6 +29,13 @@ if status is-interactive
         eval (/opt/homebrew/bin/brew shellenv)
     end
 
+    # Paths
+    # Nix paths
+    fish_add_path /etc/profiles/per-user/kyandesutter/bin
+    fish_add_path /run/current-system/sw/bin
+    fish_add_path /nix/var/nix/profiles/default/bin
+    fish_add_path ~/.nix-profile/bin
+
     # Python paths
     fish_add_path ~/Library/Python/3.9/bin
 
