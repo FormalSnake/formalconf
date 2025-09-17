@@ -25,14 +25,10 @@ config_manager_menu() {
         echo -e "${BOLD}${BLUE}Config Manager${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
-        echo "1) Stow package (link dotfiles)"
-        echo "2) Unstow package (remove links)"
-        echo "3) Restow package (relink dotfiles)"
-        echo "4) Adopt existing configs"
-        echo "5) Stow all packages"
-        echo "6) Unstow all packages"
-        echo "7) Check status"
-        echo "8) List available packages"
+        echo "1) Stow all packages"
+        echo "2) Unstow all packages"
+        echo "3) Check status"
+        echo "4) List available packages"
         echo ""
         echo "0) Back to main menu"
         echo ""
@@ -41,76 +37,24 @@ config_manager_menu() {
 
         case $choice in
             1)
-                echo -e "\n${GREEN}Available packages:${NC}"
-                ./config-manager.sh list
-                echo ""
-                echo -n "Enter package name to stow: "
-                read -r package
-                if [ -n "$package" ]; then
-                    echo -e "\n${GREEN}Stowing ${package}...${NC}\n"
-                    ./config-manager.sh stow "$package"
-                fi
-                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
-                read -r
-                ;;
-            2)
-                echo -e "\n${GREEN}Available packages:${NC}"
-                ./config-manager.sh list
-                echo ""
-                echo -n "Enter package name to unstow: "
-                read -r package
-                if [ -n "$package" ]; then
-                    echo -e "\n${GREEN}Unstowing ${package}...${NC}\n"
-                    ./config-manager.sh unstow "$package"
-                fi
-                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
-                read -r
-                ;;
-            3)
-                echo -e "\n${GREEN}Available packages:${NC}"
-                ./config-manager.sh list
-                echo ""
-                echo -n "Enter package name to restow: "
-                read -r package
-                if [ -n "$package" ]; then
-                    echo -e "\n${GREEN}Restowing ${package}...${NC}\n"
-                    ./config-manager.sh restow "$package"
-                fi
-                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
-                read -r
-                ;;
-            4)
-                echo -e "\n${GREEN}Available packages:${NC}"
-                ./config-manager.sh list
-                echo ""
-                echo -n "Enter package name to adopt: "
-                read -r package
-                if [ -n "$package" ]; then
-                    echo -e "\n${GREEN}Adopting ${package}...${NC}\n"
-                    ./config-manager.sh adopt "$package"
-                fi
-                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
-                read -r
-                ;;
-            5)
                 echo -e "\n${GREEN}Stowing all packages...${NC}\n"
                 ./config-manager.sh stow-all
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
-            6)
+            2)
                 echo -e "\n${GREEN}Unstowing all packages...${NC}\n"
                 ./config-manager.sh unstow-all
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
-            7)
+            3)
                 echo -e "\n${GREEN}Checking package status...${NC}\n"
                 ./config-manager.sh status
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
-            8)
+            4)
                 echo -e "\n${GREEN}Available packages:${NC}\n"
                 ./config-manager.sh list
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
