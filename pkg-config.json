@@ -11,7 +11,15 @@
     "cloudflare-wrangler",
     "pam-reattach",
     "stow",
-    "terminal-notifier"
+    "terminal-notifier",
+    "zoxide",
+    "ripgrep",
+    "fd",
+    "fzf",
+    "gh",
+    "bat",
+    "lazygit",
+    "libcaca"
   ],
   "casks": [
     "raycast",
