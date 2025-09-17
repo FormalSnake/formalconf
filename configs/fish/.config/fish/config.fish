@@ -45,3 +45,4 @@ if status is-interactive
     end
 end
 
+export PATH="$HOME/.local/bin:$PATH"
