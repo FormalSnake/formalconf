@@ -35,7 +35,8 @@
     "uv",
     "git",
     "neovim",
-    "tree-sitter-cli"
+    "tree-sitter-cli",
+    "tmux"
   ],
   "casks": [
     "raycast",

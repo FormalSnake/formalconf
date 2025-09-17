@@ -31,3 +31,4 @@ window-colorspace = display-p3
 
 clipboard-read = allow
 clipboard-write = allow
+keybind = shift+enter=text:\x1b\r
