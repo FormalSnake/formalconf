@@ -33,7 +33,9 @@
     "lazydocker",
     "opencode",
     "uv",
-    "git"
+    "git",
+    "neovim",
+    "tree-sitter-cli"
   ],
   "casks": [
     "raycast",
