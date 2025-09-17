@@ -1,6 +1,6 @@
 {
   "config": {
-    "purge": false,
+    "purge": true,
     "autoUpdate": true
   },
   "packages": [
