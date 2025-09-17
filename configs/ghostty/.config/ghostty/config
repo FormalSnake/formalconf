@@ -1,14 +1,16 @@
 font-family = GeistMono Nerd Font
-font-size = 12
-font-feature = -liga
+font-size = 9 
+#font-feature = -liga
 
-theme = Flexoki Dark
-cursor-style = block
+#theme = Flexoki Dark
+config-file = ?"~/formalconf/current/theme/ghostty.conf"
+cursor-style = "block"
+cursor-style-blink = false
+shell-integration-features = no-cursor
 # cursor-color = #bbbbbb
-adjust-cursor-thickness = 1
 shell-integration = fish
 shell-integration-features = true
-background-opacity = 0.85
+background-opacity = 0.9
 background-blur-radius = 32
 
 keybind = cmd+shift+space=toggle_quick_terminal
@@ -19,8 +21,10 @@ macos-titlebar-style = tabs
 # window-decoration = false
 # macos-window-shadow = false
 
-window-padding-x = 11
-window-padding-y = 11
+window-padding-x = 14
+window-padding-y = 14
+confirm-close-surface=false
+resize-overlay = never
 window-padding-balance = true
 window-colorspace = display-p3
 
