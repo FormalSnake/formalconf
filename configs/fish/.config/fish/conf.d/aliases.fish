@@ -12,3 +12,7 @@ alias ls 'ls -A --color'
 alias vim nvim
 alias cd z
 
+# Nix shortcuts
+alias nixrb 'clear && nh darwin switch .'
+alias nixrbgc 'clear && nh darwin switch . && nh clean all'
+
