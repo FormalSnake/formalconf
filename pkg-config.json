@@ -37,7 +37,8 @@
     "neovim",
     "tree-sitter-cli",
     "tmux",
-    "fastfetch"
+    "fastfetch",
+    "btop"
   ],
   "casks": [
     "raycast",
