@@ -39,7 +39,8 @@
     "obsidian",
     "jordanbaird-ice",
     "the-unarchiver",
-    "appcleaner"
+    "appcleaner",
+    "nikitabobko/tap/aerospace"
   ],
   "mas": {
     "Xcode": 497799835,
