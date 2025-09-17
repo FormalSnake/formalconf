@@ -71,7 +71,8 @@
     "gimp",
     "claude-code",
     "firefox",
-    "prismlauncher"
+    "prismlauncher",
+    "displaperture"
   ],
   "mas": {
     "Xcode": 497799835,
