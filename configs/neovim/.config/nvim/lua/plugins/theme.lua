@@ -1,8 +1,9 @@
 return {
+  { "kepano/flexoki-neovim", name = "flexoki" },
   {
     "LazyVim/LazyVim",
     opts = {
-      colorscheme = "tokyonight",
+      colorscheme = "flexoki-dark",
     },
   },
 }
