@@ -145,6 +145,12 @@ app-id = "com.apple.Music"
 run = "move-node-to-workspace media"
 
 [on-window-detected.if]
+app-id = "com.apple.TV"
+
+[[on-window-detected]]
+run = "move-node-to-workspace media"
+
+[on-window-detected.if]
 app-id = "sh.cider.genten.mac"
 
 [[on-window-detected]]
