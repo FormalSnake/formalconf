@@ -85,10 +85,10 @@ package_sync_menu() {
         echo -e "${BOLD}${BLUE}Package Sync${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
-        echo "1) Export packages"
-        echo "2) Install packages"
-        echo "3) Update packages"
-        echo "4) Check differences"
+        echo "1) Sync packages (install from pkg-config.json)"
+        echo "2) Sync with purge (remove unlisted packages)"
+        echo "3) Edit pkg-config.json"
+        echo "4) View current configuration"
         echo ""
         echo "0) Back to main menu"
         echo ""
@@ -97,26 +97,42 @@ package_sync_menu() {
 
         case $choice in
             1)
-                echo -e "\n${GREEN}Exporting packages...${NC}\n"
-                ./pkg-sync.sh export
+                if [ ! -f "pkg-config.json" ]; then
+                    echo -e "\n${RED}pkg-config.json not found!${NC}"
+                    echo -e "${YELLOW}Please create pkg-config.json first.${NC}"
+                else
+                    echo -e "\n${GREEN}Syncing packages from pkg-config.json...${NC}\n"
+                    ./pkg-sync.sh pkg-config.json
+                fi
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             2)
-                echo -e "\n${GREEN}Installing packages...${NC}\n"
-                ./pkg-sync.sh install
+                if [ ! -f "pkg-config.json" ]; then
+                    echo -e "\n${RED}pkg-config.json not found!${NC}"
+                    echo -e "${YELLOW}Please create pkg-config.json first.${NC}"
+                else
+                    # Create temporary JSON with purge enabled
+                    echo -e "\n${YELLOW}Creating temporary config with purge enabled...${NC}"
+                    jq '.config.purge = true' pkg-config.json > pkg-config-purge.json
+                    echo -e "\n${GREEN}Syncing with purge enabled...${NC}\n"
+                    ./pkg-sync.sh pkg-config-purge.json
+                    rm -f pkg-config-purge.json
+                fi
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             3)
-                echo -e "\n${GREEN}Updating packages...${NC}\n"
-                ./pkg-sync.sh update
-                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
-                read -r
+                echo -e "\n${GREEN}Opening pkg-config.json for editing...${NC}\n"
+                ${EDITOR:-nano} pkg-config.json
                 ;;
             4)
-                echo -e "\n${GREEN}Checking differences...${NC}\n"
-                ./pkg-sync.sh diff
+                if [ ! -f "pkg-config.json" ]; then
+                    echo -e "\n${RED}pkg-config.json not found!${NC}"
+                else
+                    echo -e "\n${GREEN}Current configuration:${NC}\n"
+                    cat pkg-config.json
+                fi
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
