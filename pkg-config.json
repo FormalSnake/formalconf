@@ -13,6 +13,7 @@
     "stow"
   ],
   "casks": [
+    "raycast",
     "ghostty",
     "clop",
     "figma",
