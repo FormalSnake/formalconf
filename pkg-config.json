@@ -36,7 +36,8 @@
     "git",
     "neovim",
     "tree-sitter-cli",
-    "tmux"
+    "tmux",
+    "fastfetch"
   ],
   "casks": [
     "raycast",
