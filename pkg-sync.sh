@@ -138,7 +138,19 @@ if [ "$PURGE" = "true" ]; then
         echo "Checking packages..."
         for installed in $INSTALLED_PACKAGES; do
             if [ -n "$PACKAGES" ]; then
-                if ! echo "$PACKAGES" | grep -q "^${installed}$"; then
+                # Check if installed package matches any config entry
+                FOUND=false
+                for config_pkg in $PACKAGES; do
+                    # Extract base name from tap format (e.g., owner/tap/name -> name)
+                    CONFIG_BASE=$(echo "$config_pkg" | awk -F'/' '{print $NF}')
+                    
+                    if [ "$installed" = "$config_pkg" ] || [ "$installed" = "$CONFIG_BASE" ]; then
+                        FOUND=true
+                        break
+                    fi
+                done
+                
+                if [ "$FOUND" = "false" ]; then
                     # Check if package is a dependency
                     DEPENDENTS=$(brew uses --installed "$installed" 2>/dev/null | head -5)
                     if [ -n "$DEPENDENTS" ]; then
@@ -204,8 +216,22 @@ if [ "$PURGE" = "true" ]; then
     if [ -n "$INSTALLED_MAS" ] && command -v mas >/dev/null 2>&1; then
         echo ""
         echo "Checking Mac App Store apps..."
+        
+        # Define system apps to skip (Apple's built-in apps)
+        SYSTEM_APP_IDS="409183694 409203825 409201541 408981434 682658836 425424353 424389933 424390742 413897608 1274495053"
+        # Keynote: 409183694, Numbers: 409203825, Pages: 409201541, iMovie: 408981434
+        # GarageBand: 682658836, Motion: 434290957, Final Cut Pro: 424389933
+        # MainStage: 634148309, Logic Pro: 634148309, Compressor: 424390742
+        
         CONFIGURED_MAS_IDS=$(echo "$MAS_APPS" | cut -d' ' -f1)
         for installed_id in $INSTALLED_MAS; do
+            # Skip system apps
+            if echo "$SYSTEM_APP_IDS" | grep -q "$installed_id"; then
+                APP_NAME=$(mas list | grep "^$installed_id" | cut -d' ' -f2-)
+                echo "⚠ Skipping system app: $APP_NAME (ID: $installed_id)"
+                continue
+            fi
+            
             if [ -n "$CONFIGURED_MAS_IDS" ]; then
                 if ! echo "$CONFIGURED_MAS_IDS" | grep -q "^${installed_id}$"; then
                     APP_NAME=$(mas list | grep "^$installed_id" | cut -d' ' -f2-)
