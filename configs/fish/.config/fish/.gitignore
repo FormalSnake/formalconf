@@ -5,6 +5,3 @@ fish_read_history
 
 # User secrets
 secrets.fish
-
-# Theme symlinks
-current-theme.fish
