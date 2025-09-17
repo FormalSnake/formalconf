@@ -38,7 +38,8 @@
     "tree-sitter-cli",
     "tmux",
     "fastfetch",
-    "btop"
+    "btop",
+    "fish"
   ],
   "casks": [
     "raycast",
