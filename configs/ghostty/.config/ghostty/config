@@ -3,7 +3,7 @@ font-size = 9
 #font-feature = -liga
 
 #theme = Flexoki Dark
-config-file = ?"~/formalconf/current/theme/ghostty.conf"
+config-file = ?"~/.config/formalconf/current/theme/ghostty.conf"
 cursor-style = "block"
 cursor-style-blink = false
 shell-integration-features = no-cursor
