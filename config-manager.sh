@@ -117,6 +117,8 @@ adopt_package() {
             echo -e "  Moving: ${relative_path}"
             # Copy the home file to repo, overwriting placeholder
             cp "$home_file" "$repo_file"
+            # Remove the original file so stow can create symlink
+            rm "$home_file"
         fi
     done < <(find "$package_dir" -type f -print0)
     
