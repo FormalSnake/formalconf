@@ -136,12 +136,24 @@ if [ "$PURGE" = "true" ]; then
         for installed in $INSTALLED_PACKAGES; do
             if [ -n "$PACKAGES" ]; then
                 if ! echo "$PACKAGES" | grep -q "^${installed}$"; then
-                    echo "→ Removing unlisted package: $installed"
-                    brew uninstall --formula "$installed" || echo "! Failed to remove $installed"
+                    # Check if package is a dependency
+                    DEPENDENTS=$(brew uses --installed "$installed" 2>/dev/null | head -5)
+                    if [ -n "$DEPENDENTS" ]; then
+                        echo "⚠ Skipping $installed (required by: $(echo $DEPENDENTS | tr '\n' ' '))"
+                    else
+                        echo "→ Removing unlisted package: $installed"
+                        brew uninstall --formula "$installed" 2>&1 | grep -v "Refusing to uninstall" || true
+                    fi
                 fi
             else
-                echo "→ Removing package (none in config): $installed"
-                brew uninstall --formula "$installed" || echo "! Failed to remove $installed"
+                # Check if package is a dependency
+                DEPENDENTS=$(brew uses --installed "$installed" 2>/dev/null | head -5)
+                if [ -n "$DEPENDENTS" ]; then
+                    echo "⚠ Skipping $installed (required by: $(echo $DEPENDENTS | tr '\n' ' '))"
+                else
+                    echo "→ Removing package (none in config): $installed"
+                    brew uninstall --formula "$installed" 2>&1 | grep -v "Refusing to uninstall" || true
+                fi
             fi
         done
     fi
@@ -183,10 +195,12 @@ if [ "$PURGE" = "true" ]; then
         done
     fi
     
-    # Clean up
+    # Clean up orphaned dependencies
     echo ""
     echo "Cleaning up..."
-    brew autoremove
+    echo "→ Removing orphaned dependencies..."
+    brew autoremove --verbose 2>/dev/null || true
+    echo "→ Cleaning cache..."
     brew cleanup
 fi
 
