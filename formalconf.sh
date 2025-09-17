@@ -25,10 +25,11 @@ config_manager_menu() {
         echo -e "${BOLD}${BLUE}Config Manager${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
-        echo "1) Deploy configs to system"
-        echo "2) Collect configs from system"
-        echo "3) Check config status"
-        echo "4) Backup current configs"
+        echo "1) Deploy configs"
+        echo "2) Collect configs"
+        echo "3) Backup configs"
+        echo "4) Restore configs"
+        echo "5) Check status"
         echo ""
         echo "0) Back to main menu"
         echo ""
@@ -37,26 +38,32 @@ config_manager_menu() {
 
         case $choice in
             1)
-                echo -e "\n${GREEN}Deploying configs to system...${NC}"
-                ./scripts/deploy-configs.sh
+                echo -e "\n${GREEN}Deploying configs...${NC}\n"
+                ./config-manager.sh deploy
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             2)
-                echo -e "\n${GREEN}Collecting configs from system...${NC}"
-                ./scripts/collect-configs.sh
+                echo -e "\n${GREEN}Collecting configs...${NC}\n"
+                ./config-manager.sh collect
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             3)
-                echo -e "\n${GREEN}Checking config status...${NC}"
-                ./scripts/check-status.sh
+                echo -e "\n${GREEN}Backing up configs...${NC}\n"
+                ./config-manager.sh backup
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             4)
-                echo -e "\n${GREEN}Backing up current configs...${NC}"
-                ./scripts/backup-configs.sh
+                echo -e "\n${GREEN}Restoring configs...${NC}\n"
+                ./config-manager.sh restore
+                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
+                read -r
+                ;;
+            5)
+                echo -e "\n${GREEN}Checking status...${NC}\n"
+                ./config-manager.sh status
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
@@ -78,11 +85,10 @@ package_sync_menu() {
         echo -e "${BOLD}${BLUE}Package Sync${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
-        echo "1) Export installed packages"
-        echo "2) Install packages from list"
-        echo "3) Sync Homebrew packages"
-        echo "4) Sync npm/bun packages"
-        echo "5) Compare package differences"
+        echo "1) Export packages"
+        echo "2) Install packages"
+        echo "3) Update packages"
+        echo "4) Check differences"
         echo ""
         echo "0) Back to main menu"
         echo ""
@@ -91,32 +97,26 @@ package_sync_menu() {
 
         case $choice in
             1)
-                echo -e "\n${GREEN}Exporting installed packages...${NC}"
-                ./scripts/export-packages.sh
+                echo -e "\n${GREEN}Exporting packages...${NC}\n"
+                ./pkg-sync.sh export
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             2)
-                echo -e "\n${GREEN}Installing packages from list...${NC}"
-                ./scripts/install-packages.sh
+                echo -e "\n${GREEN}Installing packages...${NC}\n"
+                ./pkg-sync.sh install
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             3)
-                echo -e "\n${GREEN}Syncing Homebrew packages...${NC}"
-                ./scripts/sync-homebrew.sh
+                echo -e "\n${GREEN}Updating packages...${NC}\n"
+                ./pkg-sync.sh update
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             4)
-                echo -e "\n${GREEN}Syncing npm/bun packages...${NC}"
-                ./scripts/sync-npm.sh
-                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
-                read -r
-                ;;
-            5)
-                echo -e "\n${GREEN}Comparing package differences...${NC}"
-                ./scripts/compare-packages.sh
+                echo -e "\n${GREEN}Checking differences...${NC}\n"
+                ./pkg-sync.sh diff
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
@@ -135,65 +135,49 @@ package_sync_menu() {
 set_theme_menu() {
     while true; do
         show_header
-        echo -e "${BOLD}${BLUE}Set Theme${NC}"
+        echo -e "${BOLD}${BLUE}Select Theme${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
-        echo "1) Apply dark theme"
-        echo "2) Apply light theme"
-        echo "3) Apply custom theme"
-        echo "4) Preview theme"
-        echo "5) Reset to default theme"
-        echo ""
-        echo "0) Back to main menu"
-        echo ""
-        echo -n "Select an option: "
-        read -r choice
 
-        case $choice in
-            1)
-                echo -e "\n${GREEN}Applying dark theme...${NC}"
-                ./scripts/apply-theme.sh dark
-                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
-                read -r
-                ;;
-            2)
-                echo -e "\n${GREEN}Applying light theme...${NC}"
-                ./scripts/apply-theme.sh light
-                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
-                read -r
-                ;;
-            3)
-                echo -e "\n${GREEN}Available custom themes:${NC}"
-                ls -1 themes/ 2>/dev/null | grep -v "^dark$\|^light$" || echo "No custom themes found"
-                echo ""
-                echo -n "Enter theme name: "
-                read -r theme_name
-                if [ -n "$theme_name" ]; then
-                    ./scripts/apply-theme.sh "$theme_name"
-                fi
-                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
-                read -r
-                ;;
-            4)
-                echo -e "\n${GREEN}Preview theme feature...${NC}"
-                ./scripts/preview-theme.sh
-                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
-                read -r
-                ;;
-            5)
-                echo -e "\n${GREEN}Resetting to default theme...${NC}"
-                ./scripts/apply-theme.sh default
-                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
-                read -r
-                ;;
-            0)
+        # Get available themes
+        themes=($(ls -d themes/*/ 2>/dev/null | xargs -n 1 basename))
+
+        if [ ${#themes[@]} -eq 0 ]; then
+            echo -e "${RED}No themes found in themes/ directory${NC}"
+            echo ""
+            echo "0) Back to main menu"
+            echo ""
+            echo -n "Select an option: "
+            read -r choice
+
+            if [ "$choice" = "0" ]; then
                 return
-                ;;
-            *)
+            fi
+        else
+            # Display themes with numbers
+            for i in "${!themes[@]}"; do
+                echo "$((i+1))) ${themes[$i]}"
+            done
+
+            echo ""
+            echo "0) Back to main menu"
+            echo ""
+            echo -n "Select a theme: "
+            read -r choice
+
+            if [ "$choice" = "0" ]; then
+                return
+            elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#themes[@]}" ]; then
+                selected_theme="${themes[$((choice-1))]}"
+                echo -e "\n${GREEN}Applying theme: $selected_theme${NC}\n"
+                ./set-theme.sh "$selected_theme"
+                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
+                read -r
+            else
                 echo -e "${RED}Invalid option. Press Enter to continue...${NC}"
                 read -r
-                ;;
-        esac
+            fi
+        fi
     done
 }
 
@@ -234,12 +218,6 @@ main_menu() {
         esac
     done
 }
-
-# Check if scripts directory exists
-if [ ! -d "scripts" ]; then
-    echo -e "${YELLOW}Creating scripts directory...${NC}"
-    mkdir -p scripts
-fi
 
 # Start the main menu
 main_menu
