@@ -3,8 +3,10 @@
     "purge": true,
     "autoUpdate": true
   },
+  "taps": ["oven-sh/bun", "jnsahaj/lumen", "nikitabobko/tap"],
   "packages": [
-    "jnsahaj/lumen/lumen",
+    "lumen",
+    "bun",
     "couchdb",
     "imagemagick",
     "mas",
@@ -20,7 +22,8 @@
     "bat",
     "lazygit",
     "libcaca",
-    "node"
+    "node",
+    "yazi"
   ],
   "casks": [
     "raycast",
@@ -49,9 +52,8 @@
     "jordanbaird-ice",
     "the-unarchiver",
     "appcleaner",
-    "nikitabobko/tap/aerospace",
-    "gimp",
-    "yazi"
+    "aerospace",
+    "gimp"
   ],
   "mas": {
     "Xcode": 497799835,
