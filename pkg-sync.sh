@@ -78,8 +78,11 @@ if [ -n "$CASKS" ]; then
     echo ""
     echo "=== Installing Casks ==="
     for cask in $CASKS; do
-        if brew list --cask | grep -q "^${cask}$"; then
-            echo "✓ Cask '$cask' already installed"
+        # Extract base name from tap format (e.g., nikitabobko/tap/aerospace -> aerospace)
+        CASK_BASE=$(echo "$cask" | awk -F'/' '{print $NF}')
+        
+        if brew list --cask | grep -q "^${CASK_BASE}$"; then
+            echo "✓ Cask '$CASK_BASE' already installed"
         else
             echo "→ Installing cask: $cask"
             brew install --cask "$cask" || echo "! Failed to install $cask"
@@ -164,7 +167,29 @@ if [ "$PURGE" = "true" ]; then
         echo "Checking casks..."
         for installed in $INSTALLED_CASKS; do
             if [ -n "$CASKS" ]; then
-                if ! echo "$CASKS" | grep -q "^${installed}$"; then
+                # Check if installed cask matches any config entry
+                FOUND=false
+                for config_cask in $CASKS; do
+                    # Extract base name from tap format (e.g., owner/tap/name -> name)
+                    CONFIG_BASE=$(echo "$config_cask" | awk -F'/' '{print $NF}')
+                    
+                    # Check various matching patterns:
+                    # 1. Exact match with config entry
+                    # 2. Match with extracted base name
+                    # 3. Match without -app suffix (installed has -app, config doesn't)
+                    # 4. Match with -app suffix (config has -app, installed doesn't)
+                    INSTALLED_BASE=$(echo "$installed" | sed 's/-app$//')
+                    CONFIG_BASE_NOAPP=$(echo "$CONFIG_BASE" | sed 's/-app$//')
+                    
+                    if [ "$installed" = "$config_cask" ] || \
+                       [ "$installed" = "$CONFIG_BASE" ] || \
+                       [ "$INSTALLED_BASE" = "$CONFIG_BASE_NOAPP" ]; then
+                        FOUND=true
+                        break
+                    fi
+                done
+                
+                if [ "$FOUND" = "false" ]; then
                     echo "→ Removing unlisted cask: $installed"
                     brew uninstall --cask "$installed" || echo "! Failed to remove $installed"
                 fi
