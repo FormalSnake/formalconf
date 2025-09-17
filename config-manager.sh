@@ -105,8 +105,24 @@ adopt_package() {
     fi
     
     echo -e "${BLUE}Adopting ${package}...${NC}"
+    
+    # Find all files in the package directory structure
+    while IFS= read -r -d '' file; do
+        local relative_path="${file#${package_dir}/}"
+        local home_file="${HOME_DIR}/${relative_path}"
+        local repo_file="${file}"
+        
+        # If the file exists in home but not a symlink
+        if [ -f "$home_file" ] && [ ! -L "$home_file" ]; then
+            echo -e "  Moving: ${relative_path}"
+            # Copy the home file to repo, overwriting placeholder
+            cp "$home_file" "$repo_file"
+        fi
+    done < <(find "$package_dir" -type f -print0)
+    
+    # Now stow the package
     cd "${CONFIGS_DIR}"
-    stow -v --adopt --target="${HOME_DIR}" "${package}"
+    stow -v --target="${HOME_DIR}" "${package}"
     echo -e "${GREEN}✓ ${package} adopted successfully${NC}"
     echo -e "${YELLOW}Note: Check git status to review adopted files${NC}"
 }
