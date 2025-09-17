@@ -10,7 +10,8 @@
     "mas",
     "cloudflare-wrangler",
     "pam-reattach",
-    "stow"
+    "stow",
+    "terminal-notifier"
   ],
   "casks": [
     "raycast",
@@ -35,7 +36,10 @@
     "hyperkey",
     "discord",
     "rstudio",
-    "obsidian"
+    "obsidian",
+    "jordanbaird-ice",
+    "the-unarchiver",
+    "appcleaner"
   ],
   "mas": {
     "Xcode": 497799835,
