@@ -13,7 +13,7 @@ shell-integration-features = true
 background-opacity = 0.9
 background-blur-radius = 32
 
-keybind = cmd+shift+space=toggle_quick_terminal
+keybind = global:cmd+shift+space=toggle_quick_terminal
 
 mouse-hide-while-typing = true
 macos-titlebar-style = tabs

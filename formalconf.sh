@@ -80,8 +80,9 @@ package_sync_menu() {
         echo ""
         echo "1) Sync packages (install from pkg-config.json)"
         echo "2) Sync with purge (remove unlisted packages)"
-        echo "3) Edit pkg-config.json"
-        echo "4) View current configuration"
+        echo "3) Upgrade all packages"
+        echo "4) Edit pkg-config.json"
+        echo "5) View current configuration"
         echo ""
         echo "0) Back to main menu"
         echo ""
@@ -116,10 +117,16 @@ package_sync_menu() {
                 read -r
                 ;;
             3)
+                echo -e "\n${GREEN}Upgrading all packages...${NC}\n"
+                ./pkg-sync.sh --upgrade-only
+                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
+                read -r
+                ;;
+            4)
                 echo -e "\n${GREEN}Opening pkg-config.json for editing...${NC}\n"
                 ${EDITOR:-nano} pkg-config.json
                 ;;
-            4)
+            5)
                 if [ ! -f "pkg-config.json" ]; then
                     echo -e "\n${RED}pkg-config.json not found!${NC}"
                 else

@@ -1,28 +1,44 @@
 #!/bin/sh
 
 # Package Sync - Manages Homebrew packages, casks, and Mac App Store apps
-# Usage: ./pkg-sync.sh <json_file>
+# Usage: ./pkg-sync.sh <json_file> [--upgrade-only]
 
 set -e
 
-# Check if JSON file is provided
-if [ "$#" -lt 1 ]; then
-    echo "Usage: $0 <json_file>"
+# Parse arguments
+UPGRADE_ONLY=false
+JSON_FILE=""
+
+for arg in "$@"; do
+    case $arg in
+        --upgrade-only)
+            UPGRADE_ONLY=true
+            ;;
+        *)
+            if [ -z "$JSON_FILE" ]; then
+                JSON_FILE="$arg"
+            fi
+            ;;
+    esac
+done
+
+# Check if JSON file is provided (not needed for upgrade-only mode)
+if [ "$UPGRADE_ONLY" = "false" ] && [ -z "$JSON_FILE" ]; then
+    echo "Usage: $0 <json_file> [--upgrade-only]"
     echo "  json_file: Path to JSON file containing packages, casks, and MAS apps"
+    echo "  --upgrade-only: Only upgrade existing packages, don't install/uninstall"
     echo "  Purge mode is configured in the JSON file (config.purge: true/false)"
     exit 1
 fi
 
-JSON_FILE="$1"
-
-# Check if JSON file exists
-if [ ! -f "$JSON_FILE" ]; then
+# Check if JSON file exists (only if not upgrade-only mode)
+if [ "$UPGRADE_ONLY" = "false" ] && [ ! -f "$JSON_FILE" ]; then
     echo "Error: JSON file '$JSON_FILE' not found"
     exit 1
 fi
 
-# Check if jq is installed
-if ! command -v jq >/dev/null 2>&1; then
+# Check if jq is installed (only if not upgrade-only mode)
+if [ "$UPGRADE_ONLY" = "false" ] && ! command -v jq >/dev/null 2>&1; then
     echo "Error: jq is required but not installed"
     echo "Install with: brew install jq"
     exit 1
@@ -37,15 +53,49 @@ fi
 # Clear the console
 clear
 
+if [ "$UPGRADE_ONLY" = "true" ]; then
+    echo "=== Package Upgrade ==="
+    echo "Upgrading all installed packages..."
+    echo ""
+
+    # Update Homebrew first
+    echo "Updating Homebrew..."
+    brew update
+    echo ""
+
+    # Upgrade all packages
+    echo "=== Upgrading Homebrew Packages ==="
+    brew upgrade --formula
+    echo ""
+
+    echo "=== Upgrading Homebrew Casks ==="
+    brew upgrade --cask --greedy
+    echo ""
+
+    # Upgrade MAS apps if mas is installed
+    if command -v mas >/dev/null 2>&1; then
+        echo "=== Upgrading Mac App Store Apps ==="
+        if mas account >/dev/null 2>&1; then
+            mas upgrade
+        else
+            echo "! Warning: Not signed in to Mac App Store"
+            echo "  Please sign in to upgrade MAS apps"
+        fi
+    else
+        echo "! mas not installed, skipping Mac App Store upgrades"
+    fi
+
+    echo ""
+    echo "=== Cleaning up ==="
+    brew cleanup
+    echo ""
+    echo "=== Upgrade Complete ==="
+    exit 0
+fi
+
 echo "=== Package Sync ==="
 echo "Config file: $JSON_FILE"
 echo ""
-
-# Update Homebrew if enabled
-if [ "$AUTO_UPDATE" = "true" ]; then
-    echo "Updating Homebrew..."
-    brew update
-fi
 
 # Get configuration and lists from JSON
 PURGE=$(jq -r '.config.purge // false' "$JSON_FILE")
@@ -54,6 +104,12 @@ TAPS=$(jq -r '.taps[]?' "$JSON_FILE" 2>/dev/null || true)
 PACKAGES=$(jq -r '.packages[]?' "$JSON_FILE" 2>/dev/null || true)
 CASKS=$(jq -r '.casks[]?' "$JSON_FILE" 2>/dev/null || true)
 MAS_APPS=$(jq -r '.mas | to_entries[] | "\(.value) \(.key)"' "$JSON_FILE" 2>/dev/null || true)
+
+# Update Homebrew if enabled
+if [ "$AUTO_UPDATE" = "true" ]; then
+    echo "Updating Homebrew..."
+    brew update
+fi
 
 echo "Configuration:"
 echo "  Purge mode: $PURGE"
