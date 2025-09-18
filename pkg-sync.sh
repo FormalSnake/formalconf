@@ -98,6 +98,124 @@ if [ "$UPGRADE_ONLY" = "true" ]; then
     exit 0
 fi
 
+if [ "$UPGRADE_INTERACTIVE" = "true" ]; then
+    echo "=== Interactive Package Upgrade ==="
+    echo "Choose which packages to upgrade..."
+    echo ""
+
+    # Update Homebrew first
+    echo "Updating Homebrew..."
+    brew update
+    echo ""
+
+    # Interactive formula upgrade
+    echo "=== Homebrew Packages ==="
+    OUTDATED_FORMULAS=$(brew outdated --formula --quiet)
+    if [ -n "$OUTDATED_FORMULAS" ]; then
+        echo "Outdated packages:"
+        echo "$OUTDATED_FORMULAS" | while read -r package; do
+            if [ -n "$package" ]; then
+                echo -n "Upgrade $package? (y/n/q): "
+                read -r answer
+                case $answer in
+                    y|Y|yes|YES)
+                        echo "→ Upgrading $package..."
+                        brew upgrade "$package"
+                        ;;
+                    q|Q|quit|QUIT)
+                        echo "Stopping package upgrades..."
+                        break
+                        ;;
+                    *)
+                        echo "Skipping $package"
+                        ;;
+                esac
+                echo ""
+            fi
+        done
+    else
+        echo "✓ All packages are up to date"
+    fi
+    echo ""
+
+    # Interactive cask upgrade
+    echo "=== Homebrew Casks ==="
+    OUTDATED_CASKS=$(brew outdated --cask --quiet)
+    if [ -n "$OUTDATED_CASKS" ]; then
+        echo "Outdated casks:"
+        echo "$OUTDATED_CASKS" | while read -r cask; do
+            if [ -n "$cask" ]; then
+                echo -n "Upgrade $cask? (y/n/q): "
+                read -r answer
+                case $answer in
+                    y|Y|yes|YES)
+                        echo "→ Upgrading $cask..."
+                        brew upgrade --cask "$cask"
+                        ;;
+                    q|Q|quit|QUIT)
+                        echo "Stopping cask upgrades..."
+                        break
+                        ;;
+                    *)
+                        echo "Skipping $cask"
+                        ;;
+                esac
+                echo ""
+            fi
+        done
+    else
+        echo "✓ All casks are up to date"
+    fi
+    echo ""
+
+    # Interactive MAS upgrade
+    if command -v mas >/dev/null 2>&1; then
+        echo "=== Mac App Store Apps ==="
+        if mas account >/dev/null 2>&1; then
+            OUTDATED_MAS=$(mas outdated)
+            if [ -n "$OUTDATED_MAS" ]; then
+                echo "Outdated MAS apps:"
+                echo "$OUTDATED_MAS" | while read -r line; do
+                    if [ -n "$line" ]; then
+                        APP_ID=$(echo "$line" | awk '{print $1}')
+                        APP_NAME=$(echo "$line" | cut -d' ' -f2-)
+                        echo -n "Upgrade $APP_NAME? (y/n/q): "
+                        read -r answer
+                        case $answer in
+                            y|Y|yes|YES)
+                                echo "→ Upgrading $APP_NAME..."
+                                mas upgrade "$APP_ID"
+                                ;;
+                            q|Q|quit|QUIT)
+                                echo "Stopping MAS upgrades..."
+                                break
+                                ;;
+                            *)
+                                echo "Skipping $APP_NAME"
+                                ;;
+                        esac
+                        echo ""
+                    fi
+                done
+            else
+                echo "✓ All MAS apps are up to date"
+            fi
+        else
+            echo "! Warning: Not signed in to Mac App Store"
+            echo "  Please sign in to upgrade MAS apps"
+        fi
+    else
+        echo "! mas not installed, skipping Mac App Store upgrades"
+    fi
+
+    echo ""
+    echo "=== Cleaning up ==="
+    brew cleanup
+    echo ""
+    echo "=== Interactive Upgrade Complete ==="
+    exit 0
+fi
+
 echo "=== Package Sync ==="
 echo "Config file: $JSON_FILE"
 echo ""
