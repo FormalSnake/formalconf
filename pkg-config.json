@@ -39,7 +39,11 @@
     "tmux",
     "fastfetch",
     "btop",
-    "fish"
+    "fish",
+    "xcodegen",
+    "swiftlint",
+    "swiftformat",
+    "xcbeautify"
   ],
   "casks": [
     "raycast",
