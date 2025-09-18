@@ -39,6 +39,9 @@ if status is-interactive
     # Python paths
     fish_add_path ~/Library/Python/3.9/bin
 
+    # FormalConf path
+    fish_add_path ~/formalconf
+
     # Load secrets
     if test -f ~/.config/fish/secrets.fish
         source ~/.config/fish/secrets.fish
