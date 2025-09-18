@@ -1,18 +1,22 @@
 #!/bin/sh
 
 # Package Sync - Manages Homebrew packages, casks, and Mac App Store apps
-# Usage: ./pkg-sync.sh <json_file> [--upgrade-only]
+# Usage: ./pkg-sync.sh <json_file> [--upgrade-only] [--upgrade-interactive]
 
 set -e
 
 # Parse arguments
 UPGRADE_ONLY=false
+UPGRADE_INTERACTIVE=false
 JSON_FILE=""
 
 for arg in "$@"; do
     case $arg in
         --upgrade-only)
             UPGRADE_ONLY=true
+            ;;
+        --upgrade-interactive)
+            UPGRADE_INTERACTIVE=true
             ;;
         *)
             if [ -z "$JSON_FILE" ]; then
@@ -22,11 +26,12 @@ for arg in "$@"; do
     esac
 done
 
-# Check if JSON file is provided (not needed for upgrade-only mode)
-if [ "$UPGRADE_ONLY" = "false" ] && [ -z "$JSON_FILE" ]; then
-    echo "Usage: $0 <json_file> [--upgrade-only]"
+# Check if JSON file is provided (not needed for upgrade modes)
+if [ "$UPGRADE_ONLY" = "false" ] && [ "$UPGRADE_INTERACTIVE" = "false" ] && [ -z "$JSON_FILE" ]; then
+    echo "Usage: $0 <json_file> [--upgrade-only] [--upgrade-interactive]"
     echo "  json_file: Path to JSON file containing packages, casks, and MAS apps"
-    echo "  --upgrade-only: Only upgrade existing packages, don't install/uninstall"
+    echo "  --upgrade-only: Upgrade all existing packages automatically"
+    echo "  --upgrade-interactive: Choose which packages to upgrade"
     echo "  Purge mode is configured in the JSON file (config.purge: true/false)"
     exit 1
 fi
