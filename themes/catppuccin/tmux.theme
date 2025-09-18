@@ -1,6 +1,5 @@
 # Catppuccin Mocha theme for tmux
-# TPM plugin for catppuccin theme
-set -g @plugin 'catppuccin/tmux'
+# Plugin: catppuccin/tmux (installed in main config)
 
 # Catppuccin theme configuration
 set -g @catppuccin_flavour 'mocha'
