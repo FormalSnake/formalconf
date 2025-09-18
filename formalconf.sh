@@ -124,10 +124,16 @@ package_sync_menu() {
                 read -r
                 ;;
             4)
+                echo -e "\n${GREEN}Starting interactive package upgrade...${NC}\n"
+                ./pkg-sync.sh --upgrade-interactive
+                echo -e "\n${YELLOW}Press Enter to continue...${NC}"
+                read -r
+                ;;
+            5)
                 echo -e "\n${GREEN}Opening pkg-config.json for editing...${NC}\n"
                 ${EDITOR:-nano} pkg-config.json
                 ;;
-            5)
+            6)
                 if [ ! -f "pkg-config.json" ]; then
                     echo -e "\n${RED}pkg-config.json not found!${NC}"
                 else
