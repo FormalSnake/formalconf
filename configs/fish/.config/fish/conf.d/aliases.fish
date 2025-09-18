@@ -16,3 +16,6 @@ alias cd z
 alias nixrb 'clear && nh darwin switch .'
 alias nixrbgc 'clear && nh darwin switch . && nh clean all'
 
+# FormalConf
+alias formalconf 'formalconf.sh'
+
