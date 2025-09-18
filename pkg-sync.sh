@@ -36,14 +36,14 @@ if [ "$UPGRADE_ONLY" = "false" ] && [ "$UPGRADE_INTERACTIVE" = "false" ] && [ -z
     exit 1
 fi
 
-# Check if JSON file exists (only if not upgrade-only mode)
-if [ "$UPGRADE_ONLY" = "false" ] && [ ! -f "$JSON_FILE" ]; then
+# Check if JSON file exists (only if not upgrade modes)
+if [ "$UPGRADE_ONLY" = "false" ] && [ "$UPGRADE_INTERACTIVE" = "false" ] && [ ! -f "$JSON_FILE" ]; then
     echo "Error: JSON file '$JSON_FILE' not found"
     exit 1
 fi
 
-# Check if jq is installed (only if not upgrade-only mode)
-if [ "$UPGRADE_ONLY" = "false" ] && ! command -v jq >/dev/null 2>&1; then
+# Check if jq is installed (only if not upgrade modes)
+if [ "$UPGRADE_ONLY" = "false" ] && [ "$UPGRADE_INTERACTIVE" = "false" ] && ! command -v jq >/dev/null 2>&1; then
     echo "Error: jq is required but not installed"
     echo "Install with: brew install jq"
     exit 1
