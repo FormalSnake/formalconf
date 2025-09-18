@@ -1,5 +1,6 @@
 # Catppuccin Latte theme for tmux
-# Plugin: catppuccin/tmux (installed in main config)
+# TPM plugin for catppuccin theme
+set -g @plugin 'catppuccin/tmux'
 
 # Catppuccin theme configuration (light variant)
 set -g @catppuccin_flavour 'latte'

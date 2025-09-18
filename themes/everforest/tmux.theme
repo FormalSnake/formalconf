@@ -1,5 +1,6 @@
 # Everforest theme for tmux
-# Plugin: egel/tmux-gruvbox (installed in main config, used as base for everforest)
+# TPM plugin - using gruvbox as base (similar color palette)
+set -g @plugin 'egel/tmux-gruvbox'
 
 # Set gruvbox to dark mode (everforest is typically dark)
 set -g @tmux-gruvbox 'dark'
