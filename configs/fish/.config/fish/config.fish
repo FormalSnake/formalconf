@@ -30,11 +30,6 @@ if status is-interactive
     end
 
     # Paths
-    # Nix paths
-    fish_add_path /etc/profiles/per-user/kyandesutter/bin
-    fish_add_path /run/current-system/sw/bin
-    fish_add_path /nix/var/nix/profiles/default/bin
-    fish_add_path ~/.nix-profile/bin
 
     # Python paths
     fish_add_path ~/Library/Python/3.9/bin
@@ -48,5 +43,4 @@ if status is-interactive
     end
 end
 
-export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
