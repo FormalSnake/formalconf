@@ -115,7 +115,7 @@ if [ "$UPGRADE_INTERACTIVE" = "true" ]; then
         echo "Outdated packages:"
         echo "$OUTDATED_FORMULAS" | while read -r package; do
             if [ -n "$package" ]; then
-                echo -n "Upgrade $package? (y/n/q): "
+                printf "Upgrade %s? (y/n/q): " "$package"
                 read -r answer
                 case $answer in
                     y|Y|yes|YES)
@@ -145,7 +145,7 @@ if [ "$UPGRADE_INTERACTIVE" = "true" ]; then
         echo "Outdated casks:"
         echo "$OUTDATED_CASKS" | while read -r cask; do
             if [ -n "$cask" ]; then
-                echo -n "Upgrade $cask? (y/n/q): "
+                printf "Upgrade %s? (y/n/q): " "$cask"
                 read -r answer
                 case $answer in
                     y|Y|yes|YES)
@@ -179,7 +179,7 @@ if [ "$UPGRADE_INTERACTIVE" = "true" ]; then
                     if [ -n "$line" ]; then
                         APP_ID=$(echo "$line" | awk '{print $1}')
                         APP_NAME=$(echo "$line" | cut -d' ' -f2-)
-                        echo -n "Upgrade $APP_NAME? (y/n/q): "
+                        printf "Upgrade %s? (y/n/q): " "$APP_NAME"
                         read -r answer
                         case $answer in
                             y|Y|yes|YES)
