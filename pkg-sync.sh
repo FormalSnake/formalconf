@@ -113,10 +113,11 @@ if [ "$UPGRADE_INTERACTIVE" = "true" ]; then
     OUTDATED_FORMULAS=$(brew outdated --formula --quiet)
     if [ -n "$OUTDATED_FORMULAS" ]; then
         echo "Outdated packages:"
-        echo "$OUTDATED_FORMULAS" | while read -r package; do
+        # Convert to array-like processing without pipe
+        while IFS= read -r package; do
             if [ -n "$package" ]; then
                 printf "Upgrade %s? (y/n/q): " "$package"
-                read -r answer
+                read -r answer </dev/tty
                 case $answer in
                     y|Y|yes|YES)
                         echo "→ Upgrading $package..."
@@ -132,7 +133,9 @@ if [ "$UPGRADE_INTERACTIVE" = "true" ]; then
                 esac
                 echo ""
             fi
-        done
+        done <<EOF
+$OUTDATED_FORMULAS
+EOF
     else
         echo "✓ All packages are up to date"
     fi
@@ -143,10 +146,11 @@ if [ "$UPGRADE_INTERACTIVE" = "true" ]; then
     OUTDATED_CASKS=$(brew outdated --cask --quiet)
     if [ -n "$OUTDATED_CASKS" ]; then
         echo "Outdated casks:"
-        echo "$OUTDATED_CASKS" | while read -r cask; do
+        # Convert to array-like processing without pipe
+        while IFS= read -r cask; do
             if [ -n "$cask" ]; then
                 printf "Upgrade %s? (y/n/q): " "$cask"
-                read -r answer
+                read -r answer </dev/tty
                 case $answer in
                     y|Y|yes|YES)
                         echo "→ Upgrading $cask..."
@@ -162,7 +166,9 @@ if [ "$UPGRADE_INTERACTIVE" = "true" ]; then
                 esac
                 echo ""
             fi
-        done
+        done <<EOF
+$OUTDATED_CASKS
+EOF
     else
         echo "✓ All casks are up to date"
     fi
@@ -175,12 +181,13 @@ if [ "$UPGRADE_INTERACTIVE" = "true" ]; then
             OUTDATED_MAS=$(mas outdated)
             if [ -n "$OUTDATED_MAS" ]; then
                 echo "Outdated MAS apps:"
-                echo "$OUTDATED_MAS" | while read -r line; do
+                # Convert to array-like processing without pipe
+                while IFS= read -r line; do
                     if [ -n "$line" ]; then
                         APP_ID=$(echo "$line" | awk '{print $1}')
                         APP_NAME=$(echo "$line" | cut -d' ' -f2-)
                         printf "Upgrade %s? (y/n/q): " "$APP_NAME"
-                        read -r answer
+                        read -r answer </dev/tty
                         case $answer in
                             y|Y|yes|YES)
                                 echo "→ Upgrading $APP_NAME..."
@@ -196,7 +203,9 @@ if [ "$UPGRADE_INTERACTIVE" = "true" ]; then
                         esac
                         echo ""
                     fi
-                done
+                done <<EOF
+$OUTDATED_MAS
+EOF
             else
                 echo "✓ All MAS apps are up to date"
             fi
