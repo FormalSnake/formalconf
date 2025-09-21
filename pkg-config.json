@@ -3,7 +3,11 @@
     "purge": false,
     "autoUpdate": true
   },
-  "taps": ["oven-sh/bun", "jnsahaj/lumen", "nikitabobko/tap"],
+  "taps": [
+    "oven-sh/bun",
+    "jnsahaj/lumen",
+    "nikitabobko/tap"
+  ],
   "packages": [
     "lumen",
     "bun",
@@ -76,7 +80,8 @@
     "claude-code",
     "firefox",
     "prismlauncher",
-    "displaperture"
+    "displaperture",
+    "zen"
   ],
   "mas": {
     "Xcode": 497799835,
