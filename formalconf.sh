@@ -12,6 +12,19 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
+# Define config directory and pkg-config location
+CONFIG_DIR="$HOME/.config/formalconf"
+PKG_CONFIG_PATH="$CONFIG_DIR/pkg-config.json"
+
+# Ensure config directory exists
+mkdir -p "$CONFIG_DIR"
+
+# Create symlink for pkg-config.json if it doesn't exist
+if [ ! -f "$PKG_CONFIG_PATH" ] && [ -f "${SCRIPT_DIR}/pkg-config.json" ]; then
+    echo -e "${YELLOW}Creating symlink for pkg-config.json in ~/.config/formalconf/${NC}"
+    ln -s "${SCRIPT_DIR}/pkg-config.json" "$PKG_CONFIG_PATH"
+fi
+
 # Clear screen and show header
 show_header() {
     clear
@@ -95,27 +108,27 @@ package_sync_menu() {
 
         case $choice in
             1)
-                if [ ! -f "${SCRIPT_DIR}/pkg-config.json" ]; then
-                    echo -e "\n${RED}pkg-config.json not found!${NC}"
+                if [ ! -f "$PKG_CONFIG_PATH" ]; then
+                    echo -e "\n${RED}pkg-config.json not found at $PKG_CONFIG_PATH!${NC}"
                     echo -e "${YELLOW}Please create pkg-config.json first.${NC}"
                 else
                     echo -e "\n${GREEN}Syncing packages from pkg-config.json...${NC}\n"
-                    "${SCRIPT_DIR}/pkg-sync.sh" "${SCRIPT_DIR}/pkg-config.json"
+                    "${SCRIPT_DIR}/pkg-sync.sh" "$PKG_CONFIG_PATH"
                 fi
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             2)
-                if [ ! -f "${SCRIPT_DIR}/pkg-config.json" ]; then
-                    echo -e "\n${RED}pkg-config.json not found!${NC}"
+                if [ ! -f "$PKG_CONFIG_PATH" ]; then
+                    echo -e "\n${RED}pkg-config.json not found at $PKG_CONFIG_PATH!${NC}"
                     echo -e "${YELLOW}Please create pkg-config.json first.${NC}"
                 else
                     # Create temporary JSON with purge enabled
                     echo -e "\n${YELLOW}Creating temporary config with purge enabled...${NC}"
-                    jq '.config.purge = true' "${SCRIPT_DIR}/pkg-config.json" > "${SCRIPT_DIR}/pkg-config-purge.json"
+                    jq '.config.purge = true' "$PKG_CONFIG_PATH" > "$CONFIG_DIR/pkg-config-purge.json"
                     echo -e "\n${GREEN}Syncing with purge enabled...${NC}\n"
-                    "${SCRIPT_DIR}/pkg-sync.sh" "${SCRIPT_DIR}/pkg-config-purge.json"
-                    rm -f "${SCRIPT_DIR}/pkg-config-purge.json"
+                    "${SCRIPT_DIR}/pkg-sync.sh" "$CONFIG_DIR/pkg-config-purge.json"
+                    rm -f "$CONFIG_DIR/pkg-config-purge.json"
                 fi
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
@@ -134,14 +147,14 @@ package_sync_menu() {
                 ;;
             5)
                 echo -e "\n${GREEN}Opening pkg-config.json for editing...${NC}\n"
-                ${EDITOR:-nano} "${SCRIPT_DIR}/pkg-config.json"
+                ${EDITOR:-nano} "$PKG_CONFIG_PATH"
                 ;;
             6)
-                if [ ! -f "${SCRIPT_DIR}/pkg-config.json" ]; then
-                    echo -e "\n${RED}pkg-config.json not found!${NC}"
+                if [ ! -f "$PKG_CONFIG_PATH" ]; then
+                    echo -e "\n${RED}pkg-config.json not found at $PKG_CONFIG_PATH!${NC}"
                 else
                     echo -e "\n${GREEN}Current configuration:${NC}\n"
-                    cat "${SCRIPT_DIR}/pkg-config.json"
+                    cat "$PKG_CONFIG_PATH"
                 fi
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
