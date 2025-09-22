@@ -183,6 +183,11 @@ run = "move-node-to-workspace productivity"
 [on-window-detected.if]
 app-id = "com.apple.Notes"
 
+[[on-window-detected]]
+if.app-id = 'app.zen-browser.zen'
+if.window-title-regex-substring = 'Picture-in-Picture'
+run = ['layout floating']
+
 [workspace-to-monitor-force-assignment]
 ai = "main"
 code = "main"
