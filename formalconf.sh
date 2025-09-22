@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Colors for better UI
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -38,25 +41,25 @@ config_manager_menu() {
         case $choice in
             1)
                 echo -e "\n${GREEN}Stowing all packages...${NC}\n"
-                ./config-manager.sh stow-all
+                "${SCRIPT_DIR}/config-manager.sh" stow-all
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             2)
                 echo -e "\n${GREEN}Unstowing all packages...${NC}\n"
-                ./config-manager.sh unstow-all
+                "${SCRIPT_DIR}/config-manager.sh" unstow-all
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             3)
                 echo -e "\n${GREEN}Checking package status...${NC}\n"
-                ./config-manager.sh status
+                "${SCRIPT_DIR}/config-manager.sh" status
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             4)
                 echo -e "\n${GREEN}Available packages:${NC}\n"
-                ./config-manager.sh list
+                "${SCRIPT_DIR}/config-manager.sh" list
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
@@ -92,53 +95,53 @@ package_sync_menu() {
 
         case $choice in
             1)
-                if [ ! -f "pkg-config.json" ]; then
+                if [ ! -f "${SCRIPT_DIR}/pkg-config.json" ]; then
                     echo -e "\n${RED}pkg-config.json not found!${NC}"
                     echo -e "${YELLOW}Please create pkg-config.json first.${NC}"
                 else
                     echo -e "\n${GREEN}Syncing packages from pkg-config.json...${NC}\n"
-                    ./pkg-sync.sh pkg-config.json
+                    "${SCRIPT_DIR}/pkg-sync.sh" "${SCRIPT_DIR}/pkg-config.json"
                 fi
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             2)
-                if [ ! -f "pkg-config.json" ]; then
+                if [ ! -f "${SCRIPT_DIR}/pkg-config.json" ]; then
                     echo -e "\n${RED}pkg-config.json not found!${NC}"
                     echo -e "${YELLOW}Please create pkg-config.json first.${NC}"
                 else
                     # Create temporary JSON with purge enabled
                     echo -e "\n${YELLOW}Creating temporary config with purge enabled...${NC}"
-                    jq '.config.purge = true' pkg-config.json > pkg-config-purge.json
+                    jq '.config.purge = true' "${SCRIPT_DIR}/pkg-config.json" > "${SCRIPT_DIR}/pkg-config-purge.json"
                     echo -e "\n${GREEN}Syncing with purge enabled...${NC}\n"
-                    ./pkg-sync.sh pkg-config-purge.json
-                    rm -f pkg-config-purge.json
+                    "${SCRIPT_DIR}/pkg-sync.sh" "${SCRIPT_DIR}/pkg-config-purge.json"
+                    rm -f "${SCRIPT_DIR}/pkg-config-purge.json"
                 fi
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             3)
                 echo -e "\n${GREEN}Upgrading all packages...${NC}\n"
-                ./pkg-sync.sh --upgrade-only
+                "${SCRIPT_DIR}/pkg-sync.sh" --upgrade-only
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             4)
                 echo -e "\n${GREEN}Starting interactive package upgrade...${NC}\n"
-                ./pkg-sync.sh --upgrade-interactive
+                "${SCRIPT_DIR}/pkg-sync.sh" --upgrade-interactive
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
                 ;;
             5)
                 echo -e "\n${GREEN}Opening pkg-config.json for editing...${NC}\n"
-                ${EDITOR:-nano} pkg-config.json
+                ${EDITOR:-nano} "${SCRIPT_DIR}/pkg-config.json"
                 ;;
             6)
-                if [ ! -f "pkg-config.json" ]; then
+                if [ ! -f "${SCRIPT_DIR}/pkg-config.json" ]; then
                     echo -e "\n${RED}pkg-config.json not found!${NC}"
                 else
                     echo -e "\n${GREEN}Current configuration:${NC}\n"
-                    cat pkg-config.json
+                    cat "${SCRIPT_DIR}/pkg-config.json"
                 fi
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
@@ -163,7 +166,7 @@ set_theme_menu() {
         echo ""
 
         # Get available themes
-        themes=($(ls -d themes/*/ 2>/dev/null | xargs -n 1 basename))
+        themes=($(ls -d "${SCRIPT_DIR}/themes"/*/ 2>/dev/null | xargs -n 1 basename))
 
         if [ ${#themes[@]} -eq 0 ]; then
             echo -e "${RED}No themes found in themes/ directory${NC}"
@@ -193,7 +196,7 @@ set_theme_menu() {
             elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#themes[@]}" ]; then
                 selected_theme="${themes[$((choice-1))]}"
                 echo -e "\n${GREEN}Applying theme: $selected_theme${NC}\n"
-                ./set-theme.sh "$selected_theme"
+                "${SCRIPT_DIR}/set-theme.sh" "$selected_theme"
                 echo -e "\n${YELLOW}Press Enter to continue...${NC}"
                 read -r
             else
