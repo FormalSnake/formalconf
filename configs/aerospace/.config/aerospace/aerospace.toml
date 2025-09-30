@@ -184,6 +184,12 @@ run = "move-node-to-workspace productivity"
 app-id = "com.apple.Notes"
 
 [[on-window-detected]]
+run = "move-node-to-workspace productivity"
+
+[on-window-detected.if]
+app-id = "com.apple.iCal"
+
+[[on-window-detected]]
 if.app-id = 'app.zen-browser.zen'
 if.window-title-regex-substring = 'Picture-in-Picture'
 run = ['layout floating']

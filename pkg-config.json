@@ -47,7 +47,8 @@
     "xcodegen",
     "swiftlint",
     "swiftformat",
-    "xcbeautify"
+    "xcbeautify",
+    "wget"
   ],
   "casks": [
     "raycast",
@@ -59,6 +60,7 @@
     "balenaetcher",
     "betterdisplay",
     "steam",
+    "epic-games",
     "brave-browser@nightly",
     "google-drive",
     "github",
@@ -90,7 +92,6 @@
     "WireGuard": 1451685025,
     "Crystalfetch": 6454431289,
     "WhatsApp": 310633997,
-    "Flighty": 1358823008,
-    "Thronefall": 6744029320
+    "Flighty": 1358823008
   }
 }
