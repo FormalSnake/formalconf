@@ -48,7 +48,8 @@
     "swiftlint",
     "swiftformat",
     "xcbeautify",
-    "wget"
+    "wget",
+    "codex"
   ],
   "casks": [
     "raycast",

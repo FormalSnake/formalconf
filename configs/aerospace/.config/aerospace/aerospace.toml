@@ -130,7 +130,7 @@ run = "move-node-to-workspace ai"
 app-id = "com.anthropic.Claude"
 
 [[on-window-detected]]
-run = "move-node-to-workspace web"
+run = "move-node-to-workspace ai"
 
 [on-window-detected.if]
 app-id = "ai.perplexity.comet"
