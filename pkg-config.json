@@ -49,7 +49,9 @@
     "swiftformat",
     "xcbeautify",
     "wget",
-    "codex"
+    "codex",
+    "cocoapods",
+    "watchman"
   ],
   "casks": [
     "raycast",
