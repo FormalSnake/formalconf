@@ -51,7 +51,8 @@
     "wget",
     "codex",
     "cocoapods",
-    "watchman"
+    "watchman",
+    "acsandmann/tap/rift"
   ],
   "casks": [
     "raycast",
@@ -74,20 +75,20 @@
     "stats",
     "utm",
     "hyperkey",
-    "discord",
     "rstudio",
     "obsidian",
     "jordanbaird-ice",
     "the-unarchiver",
     "appcleaner",
     "aerospace",
-    "gimp",
     "claude-code",
     "firefox",
     "prismlauncher",
     "displaperture",
     "zen",
-    "warp"
+    "warp",
+    "zulu@17",
+    "vesktop"
   ],
   "mas": {
     "Xcode": 497799835,

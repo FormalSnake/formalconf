@@ -37,6 +37,14 @@ if status is-interactive
     # FormalConf path
     fish_add_path ~/formalconf
 
+    # Java Home
+    set -gx JAVA_HOME /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+
+    # Android SDK
+    set -gx ANDROID_HOME $HOME/Library/Android/sdk
+    fish_add_path $ANDROID_HOME/emulator
+    fish_add_path $ANDROID_HOME/platform-tools
+
     # Load secrets
     if test -f ~/.config/fish/secrets.fish
         source ~/.config/fish/secrets.fish
