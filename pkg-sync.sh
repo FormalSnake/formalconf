@@ -33,6 +33,7 @@ if [ "$UPGRADE_ONLY" = "false" ] && [ "$UPGRADE_INTERACTIVE" = "false" ] && [ -z
     echo "  --upgrade-only: Upgrade all existing packages automatically"
     echo "  --upgrade-interactive: Choose which packages to upgrade"
     echo "  Purge mode is configured in the JSON file (config.purge: true/false)"
+    echo "  Interactive purge mode is configured in the JSON file (config.purgeInteractive: true/false)"
     exit 1
 fi
 
@@ -231,6 +232,7 @@ echo ""
 
 # Get configuration and lists from JSON
 PURGE=$(jq -r '.config.purge // false' "$JSON_FILE")
+PURGE_INTERACTIVE=$(jq -r '.config.purgeInteractive // false' "$JSON_FILE")
 AUTO_UPDATE=$(jq -r '.config.autoUpdate // true' "$JSON_FILE")
 TAPS=$(jq -r '.taps[]?' "$JSON_FILE" 2>/dev/null || true)
 PACKAGES=$(jq -r '.packages[]?' "$JSON_FILE" 2>/dev/null || true)
@@ -245,6 +247,7 @@ fi
 
 echo "Configuration:"
 echo "  Purge mode: $PURGE"
+echo "  Purge interactive: $PURGE_INTERACTIVE"
 echo "  Auto-update: $AUTO_UPDATE"
 echo ""
 
@@ -336,7 +339,12 @@ if [ "$PURGE" = "true" ]; then
     if [ -n "$INSTALLED_PACKAGES" ]; then
         echo ""
         echo "Checking packages..."
+        QUIT_PURGE=false
         for installed in $INSTALLED_PACKAGES; do
+            if [ "$QUIT_PURGE" = "true" ]; then
+                break
+            fi
+
             if [ -n "$PACKAGES" ]; then
                 if ! echo "$PACKAGES" | grep -q "^${installed}$"; then
                     # Check if package is a dependency
@@ -344,8 +352,26 @@ if [ "$PURGE" = "true" ]; then
                     if [ -n "$DEPENDENTS" ]; then
                         echo "⚠ Skipping $installed (required by: $(echo $DEPENDENTS | tr '\n' ' '))"
                     else
-                        echo "→ Removing unlisted package: $installed"
-                        brew uninstall --formula "$installed" 2>&1 | grep -v "Refusing to uninstall" || true
+                        if [ "$PURGE_INTERACTIVE" = "true" ]; then
+                            printf "Remove unlisted package %s? (y/n/q): " "$installed"
+                            read -r answer </dev/tty
+                            case $answer in
+                                y|Y|yes|YES)
+                                    echo "→ Removing $installed"
+                                    brew uninstall --formula "$installed" 2>&1 | grep -v "Refusing to uninstall" || true
+                                    ;;
+                                q|Q|quit|QUIT)
+                                    echo "Stopping package purge..."
+                                    QUIT_PURGE=true
+                                    ;;
+                                *)
+                                    echo "Skipping $installed"
+                                    ;;
+                            esac
+                        else
+                            echo "→ Removing unlisted package: $installed"
+                            brew uninstall --formula "$installed" 2>&1 | grep -v "Refusing to uninstall" || true
+                        fi
                     fi
                 fi
             else
@@ -354,8 +380,26 @@ if [ "$PURGE" = "true" ]; then
                 if [ -n "$DEPENDENTS" ]; then
                     echo "⚠ Skipping $installed (required by: $(echo $DEPENDENTS | tr '\n' ' '))"
                 else
-                    echo "→ Removing package (none in config): $installed"
-                    brew uninstall --formula "$installed" 2>&1 | grep -v "Refusing to uninstall" || true
+                    if [ "$PURGE_INTERACTIVE" = "true" ]; then
+                        printf "Remove package (none in config) %s? (y/n/q): " "$installed"
+                        read -r answer </dev/tty
+                        case $answer in
+                            y|Y|yes|YES)
+                                echo "→ Removing $installed"
+                                brew uninstall --formula "$installed" 2>&1 | grep -v "Refusing to uninstall" || true
+                                ;;
+                            q|Q|quit|QUIT)
+                                echo "Stopping package purge..."
+                                QUIT_PURGE=true
+                                ;;
+                            *)
+                                echo "Skipping $installed"
+                                ;;
+                        esac
+                    else
+                        echo "→ Removing package (none in config): $installed"
+                        brew uninstall --formula "$installed" 2>&1 | grep -v "Refusing to uninstall" || true
+                    fi
                 fi
             fi
         done
@@ -366,14 +410,54 @@ if [ "$PURGE" = "true" ]; then
         echo ""
         echo "Checking casks..."
         for installed in $INSTALLED_CASKS; do
+            if [ "$QUIT_PURGE" = "true" ]; then
+                break
+            fi
+
             if [ -n "$CASKS" ]; then
                 if ! echo "$CASKS" | grep -q "^${installed}$"; then
-                    echo "→ Removing unlisted cask: $installed"
-                    brew uninstall --cask "$installed" || echo "! Failed to remove $installed"
+                    if [ "$PURGE_INTERACTIVE" = "true" ]; then
+                        printf "Remove unlisted cask %s? (y/n/q): " "$installed"
+                        read -r answer </dev/tty
+                        case $answer in
+                            y|Y|yes|YES)
+                                echo "→ Removing $installed"
+                                brew uninstall --cask "$installed" || echo "! Failed to remove $installed"
+                                ;;
+                            q|Q|quit|QUIT)
+                                echo "Stopping cask purge..."
+                                QUIT_PURGE=true
+                                ;;
+                            *)
+                                echo "Skipping $installed"
+                                ;;
+                        esac
+                    else
+                        echo "→ Removing unlisted cask: $installed"
+                        brew uninstall --cask "$installed" || echo "! Failed to remove $installed"
+                    fi
                 fi
             else
-                echo "→ Removing cask (none in config): $installed"
-                brew uninstall --cask "$installed" || echo "! Failed to remove $installed"
+                if [ "$PURGE_INTERACTIVE" = "true" ]; then
+                    printf "Remove cask (none in config) %s? (y/n/q): " "$installed"
+                    read -r answer </dev/tty
+                    case $answer in
+                        y|Y|yes|YES)
+                            echo "→ Removing $installed"
+                            brew uninstall --cask "$installed" || echo "! Failed to remove $installed"
+                            ;;
+                        q|Q|quit|QUIT)
+                            echo "Stopping cask purge..."
+                            QUIT_PURGE=true
+                            ;;
+                        *)
+                            echo "Skipping $installed"
+                            ;;
+                    esac
+                else
+                    echo "→ Removing cask (none in config): $installed"
+                    brew uninstall --cask "$installed" || echo "! Failed to remove $installed"
+                fi
             fi
         done
     fi
@@ -391,23 +475,63 @@ if [ "$PURGE" = "true" ]; then
         
         CONFIGURED_MAS_IDS=$(echo "$MAS_APPS" | cut -d' ' -f1)
         for installed_id in $INSTALLED_MAS; do
+            if [ "$QUIT_PURGE" = "true" ]; then
+                break
+            fi
+
             # Skip system apps
             if echo "$SYSTEM_APP_IDS" | grep -q "$installed_id"; then
                 APP_NAME=$(mas list | grep "^$installed_id" | cut -d' ' -f2-)
                 echo "⚠ Skipping system app: $APP_NAME (ID: $installed_id)"
                 continue
             fi
-            
+
             if [ -n "$CONFIGURED_MAS_IDS" ]; then
                 if ! echo "$CONFIGURED_MAS_IDS" | grep -q "^${installed_id}$"; then
                     APP_NAME=$(mas list | grep "^$installed_id" | cut -d' ' -f2-)
-                    echo "→ Removing unlisted MAS app: $APP_NAME (ID: $installed_id)"
-                    mas uninstall "$installed_id" || echo "! Failed to remove MAS app $installed_id"
+                    if [ "$PURGE_INTERACTIVE" = "true" ]; then
+                        printf "Remove unlisted MAS app %s? (y/n/q): " "$APP_NAME"
+                        read -r answer </dev/tty
+                        case $answer in
+                            y|Y|yes|YES)
+                                echo "→ Removing $APP_NAME"
+                                mas uninstall "$installed_id" || echo "! Failed to remove MAS app $installed_id"
+                                ;;
+                            q|Q|quit|QUIT)
+                                echo "Stopping MAS app purge..."
+                                QUIT_PURGE=true
+                                ;;
+                            *)
+                                echo "Skipping $APP_NAME"
+                                ;;
+                        esac
+                    else
+                        echo "→ Removing unlisted MAS app: $APP_NAME (ID: $installed_id)"
+                        mas uninstall "$installed_id" || echo "! Failed to remove MAS app $installed_id"
+                    fi
                 fi
             else
                 APP_NAME=$(mas list | grep "^$installed_id" | cut -d' ' -f2-)
-                echo "→ Removing MAS app (none in config): $APP_NAME (ID: $installed_id)"
-                mas uninstall "$installed_id" || echo "! Failed to remove MAS app $installed_id"
+                if [ "$PURGE_INTERACTIVE" = "true" ]; then
+                    printf "Remove MAS app (none in config) %s? (y/n/q): " "$APP_NAME"
+                    read -r answer </dev/tty
+                    case $answer in
+                        y|Y|yes|YES)
+                            echo "→ Removing $APP_NAME"
+                            mas uninstall "$installed_id" || echo "! Failed to remove MAS app $installed_id"
+                            ;;
+                        q|Q|quit|QUIT)
+                            echo "Stopping MAS app purge..."
+                            QUIT_PURGE=true
+                            ;;
+                        *)
+                            echo "Skipping $APP_NAME"
+                            ;;
+                    esac
+                else
+                    echo "→ Removing MAS app (none in config): $APP_NAME (ID: $installed_id)"
+                    mas uninstall "$installed_id" || echo "! Failed to remove MAS app $installed_id"
+                fi
             fi
         done
     fi

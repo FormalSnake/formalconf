@@ -1,6 +1,7 @@
 {
   "config": {
     "purge": false,
+    "purgeInteractive": true,
     "autoUpdate": true
   },
   "taps": [
