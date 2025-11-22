@@ -1,0 +1,23 @@
+{
+  "general.defaultSearchEngine": "google",
+  "general.aiSearchEngine": "perplexity",
+  "appearance.theme": "system",
+  "appearance.colorScheme": "default",
+  "privacy.doNotTrack": true,
+  "privacy.blockThirdPartyCookies": true,
+  "privacy.clearDataOnExit": false,
+  "privacy.adblock": "disabled",
+  "downloads.location": "/Users/kyandesutter/Downloads",
+  "downloads.askWhereToSave": true,
+  "advanced.hardwareAcceleration": true,
+  "advanced.webGL": true,
+  "advanced.proxyMode": "system",
+  "advanced.enableMv2Extensions": true,
+  "advanced.developerMode": false,
+  "performance.autoSuspendTabs": false,
+  "performance.suspendInactiveTabsAfter": 180,
+  "performance.memoryMonitoring": true,
+  "performance.clearCacheOnStartup": false,
+  "performance.autoClearCache": true,
+  "performance.clearCacheInterval": 7
+}

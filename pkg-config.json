@@ -53,7 +53,8 @@
     "codex",
     "cocoapods",
     "watchman",
-    "acsandmann/tap/rift"
+    "acsandmann/tap/rift",
+    "dipc"
   ],
   "casks": [
     "raycast",
@@ -89,7 +90,9 @@
     "zen",
     "warp",
     "zulu@17",
-    "vesktop"
+    "vesktop",
+    "db-browser-for-sqlite",
+    "karabiner-elements"
   ],
   "mas": {
     "Xcode": 497799835,

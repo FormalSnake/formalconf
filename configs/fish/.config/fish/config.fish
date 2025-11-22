@@ -52,3 +52,6 @@ if status is-interactive
 end
 
 export PATH="$HOME/.local/bin:$PATH"
+
+# Added by Antigravity
+fish_add_path /Users/kyandesutter/.antigravity/antigravity/bin

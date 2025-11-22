@@ -76,6 +76,12 @@ run = "move-node-to-workspace web"
 app-id = "com.brave.Browser"
 
 [[on-window-detected]]
+run = "move-node-to-workspace web"
+
+[on-window-detected.if]
+app-id = "com.formalsnake.lynk"
+
+[[on-window-detected]]
 run = "move-node-to-workspace terminal"
 
 [on-window-detected.if]
@@ -164,6 +170,12 @@ run = "move-node-to-workspace gaming"
 
 [on-window-detected.if]
 app-id = "com.valvesoftware.steam"
+
+[[on-window-detected]]
+run = "move-node-to-workspace gaming"
+
+[on-window-detected.if]
+app-id = "dev.vencord.vesktop"
 
 [[on-window-detected]]
 run = "move-node-to-workspace gaming"
