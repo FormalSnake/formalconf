@@ -186,7 +186,7 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
   const [success, setSuccess] = useState(true);
 
   useInput((_, key) => {
-    if (state === "menu" && !loading && (key.backspace || key.leftArrow)) {
+    if (state === "menu" && !loading && (key.escape || key.leftArrow)) {
       onBack();
     }
   });
