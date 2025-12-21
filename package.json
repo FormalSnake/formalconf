@@ -1,0 +1,22 @@
+{
+  "name": "formalconf",
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "formalconf": "bun run src/cli/formalconf.tsx",
+    "config": "bun run src/cli/config-manager.ts",
+    "pkg-sync": "bun run src/cli/pkg-sync.ts",
+    "theme": "bun run src/cli/set-theme.ts",
+    "typecheck": "bun tsc --noEmit"
+  },
+  "dependencies": {
+    "ink": "^5.0.1",
+    "@inkjs/ui": "^2.0.0",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^18.3.0",
+    "typescript": "^5.0.0"
+  }
+}
