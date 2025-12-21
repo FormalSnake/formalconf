@@ -117,6 +117,8 @@ interface PendingPrompt {
 function PackageMenu({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<MenuState>("menu");
   const [lines, setLines] = useState<string[]>([]);
+  const [output, setOutput] = useState("");
+  const [isStreamingOp, setIsStreamingOp] = useState(true);
   const [pendingPrompt, setPendingPrompt] = useState<PendingPrompt | null>(null);
   const [success, setSuccess] = useState(true);
   const isRunningRef = useRef(false);
@@ -161,31 +163,42 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
 
     setState("running");
     setLines([]);
+    setOutput("");
     setPendingPrompt(null);
 
     let result: { output: string; success: boolean };
 
     switch (action) {
       case "sync":
+        setIsStreamingOp(true);
         result = await runPkgSyncWithCallbacks([], callbacks);
         break;
       case "sync-purge":
+        setIsStreamingOp(true);
         result = await runPkgSyncWithCallbacks(["--purge"], callbacks);
         break;
       case "upgrade":
+        setIsStreamingOp(true);
         result = await runPkgSyncWithCallbacks(["--upgrade-only"], callbacks);
         break;
       case "upgrade-interactive":
+        setIsStreamingOp(true);
         result = await runPkgSyncWithCallbacks(["--upgrade-interactive"], callbacks);
         break;
       case "lock-update":
+        setIsStreamingOp(false);
         result = await runPkgLock(["update"]);
+        setOutput(result.output);
         break;
       case "lock-status":
+        setIsStreamingOp(false);
         result = await runPkgLock(["status"]);
+        setOutput(result.output);
         break;
       default:
+        setIsStreamingOp(false);
         result = { output: "Unknown action", success: false };
+        setOutput(result.output);
     }
 
     setSuccess(result.success);
@@ -194,6 +207,13 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
   };
 
   if (state === "running") {
+    if (!isStreamingOp) {
+      return (
+        <Panel title="Package Sync">
+          <Spinner label="Processing..." />
+        </Panel>
+      );
+    }
     return (
       <Panel title="Package Sync">
         <ScrollableLog lines={lines} />
@@ -209,6 +229,16 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
   }
 
   if (state === "result") {
+    if (!isStreamingOp) {
+      return (
+        <CommandOutput
+          title="Package Sync"
+          output={output}
+          success={success}
+          onDismiss={() => setState("menu")}
+        />
+      );
+    }
     return (
       <Panel title="Package Sync" borderColor={success ? colors.success : colors.error}>
         <ScrollableLog lines={lines} autoScroll={false} />
