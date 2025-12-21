@@ -18,7 +18,6 @@ export function ThemeCard({ theme, isSelected, width }: ThemeCardProps) {
   if (theme.isLightMode) indicators.push("light");
 
   const indicatorText = indicators.length > 0 ? ` [${indicators.join(" ")}]` : "";
-  const innerWidth = width - 4; // account for border + padding
 
   return (
     <Box
@@ -37,7 +36,6 @@ export function ThemeCard({ theme, isSelected, width }: ThemeCardProps) {
         </Text>
         <Text color={colors.primaryDim}>{indicatorText}</Text>
       </Box>
-
     </Box>
   );
 }
