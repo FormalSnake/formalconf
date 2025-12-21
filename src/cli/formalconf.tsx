@@ -45,7 +45,7 @@ function ConfigMenu({ onBack }: { onBack: () => void }) {
   const [success, setSuccess] = useState(true);
 
   useInput((_, key) => {
-    if (state === "menu" && (key.backspace || key.leftArrow)) {
+    if (state === "menu" && (key.escape || key.leftArrow)) {
       onBack();
     }
   });
@@ -106,7 +106,7 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
   const [success, setSuccess] = useState(true);
 
   useInput((_, key) => {
-    if (state === "menu" && (key.backspace || key.leftArrow)) {
+    if (state === "menu" && (key.escape || key.leftArrow)) {
       onBack();
     }
   });
