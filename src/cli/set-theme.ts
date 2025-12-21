@@ -13,6 +13,12 @@ const colors = {
 };
 
 async function listThemes(): Promise<Theme[]> {
+  await ensureConfigDir();
+
+  if (!existsSync(THEMES_DIR)) {
+    return [];
+  }
+
   const entries = readdirSync(THEMES_DIR, { withFileTypes: true });
   const themes: Theme[] = [];
 
@@ -74,9 +80,17 @@ async function main() {
   const [themeName] = positionals;
 
   if (!themeName) {
+    const themes = await listThemes();
+
+    if (themes.length === 0) {
+      console.log(`${colors.yellow}No themes available.${colors.reset}`);
+      console.log(`This system is compatible with omarchy themes.`);
+      console.log(`\nAdd themes to: ${colors.cyan}~/.config/formalconf/themes/${colors.reset}`);
+      process.exit(0);
+    }
+
     console.log(`${colors.cyan}Usage: bun run theme <theme-name>${colors.reset}\n`);
     console.log("Available themes:");
-    const themes = await listThemes();
     for (const theme of themes) {
       console.log(`  ${colors.blue}•${colors.reset} ${theme.name}`);
     }

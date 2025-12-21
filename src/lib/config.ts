@@ -1,17 +1,26 @@
-import { PKG_CONFIG_PATH, CONFIG_DIR } from "./paths";
+import { PKG_CONFIG_PATH, ensureConfigDir } from "./paths";
 import type { PkgConfig } from "../types/pkg-config";
 import { existsSync } from "fs";
-import { join } from "path";
+
+const DEFAULT_CONFIG: PkgConfig = {
+  config: {
+    purge: false,
+    purgeInteractive: true,
+    autoUpdate: true,
+  },
+  taps: [],
+  packages: [],
+  casks: [],
+  mas: {},
+};
 
 export async function loadPkgConfig(path?: string): Promise<PkgConfig> {
+  await ensureConfigDir();
   const configPath = path || PKG_CONFIG_PATH;
 
   if (!existsSync(configPath)) {
-    const symlinkPath = join(CONFIG_DIR, "pkg-config.json");
-    if (existsSync(symlinkPath)) {
-      return Bun.file(symlinkPath).json();
-    }
-    throw new Error(`pkg-config.json not found at ${configPath}`);
+    await savePkgConfig(DEFAULT_CONFIG, configPath);
+    return DEFAULT_CONFIG;
   }
 
   return Bun.file(configPath).json();
@@ -21,6 +30,7 @@ export async function savePkgConfig(
   config: PkgConfig,
   path?: string
 ): Promise<void> {
+  await ensureConfigDir();
   const configPath = path || PKG_CONFIG_PATH;
   await Bun.write(configPath, JSON.stringify(config, null, 2));
 }

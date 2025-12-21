@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { render, Box, Text, useApp } from "ink";
 import { Select, Spinner } from "@inkjs/ui";
-import { readdirSync } from "fs";
+import { readdirSync, existsSync } from "fs";
 import { Header } from "../components/Header";
 import { THEMES_DIR, ensureConfigDir } from "../lib/paths";
 import { exec, execLive } from "../lib/shell";
@@ -154,10 +154,14 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
 function ThemeMenu({ onBack }: { onBack: () => void }) {
   const [themes, setThemes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
   const { exit } = useApp();
 
   useEffect(() => {
+    if (!existsSync(THEMES_DIR)) {
+      setThemes([]);
+      setLoading(false);
+      return;
+    }
     const entries = readdirSync(THEMES_DIR, { withFileTypes: true });
     const themeNames = entries
       .filter((e) => e.isDirectory())
@@ -186,6 +190,28 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
     return <Spinner label="Loading themes..." />;
   }
 
+  if (themes.length === 0) {
+    return (
+      <Box flexDirection="column">
+        <Text bold color="blue">
+          Select Theme
+        </Text>
+        <Text color="cyan">{"━".repeat(38)}</Text>
+        <Box marginTop={1} flexDirection="column">
+          <Text color="yellow">No themes available.</Text>
+          <Text>This system is compatible with omarchy themes.</Text>
+          <Text dimColor>Add themes to ~/.config/formalconf/themes/</Text>
+        </Box>
+        <Box marginTop={1}>
+          <Select
+            options={[{ label: "Back", value: "back" }]}
+            onChange={() => onBack()}
+          />
+        </Box>
+      </Box>
+    );
+  }
+
   const options = [
     ...themes.map((t) => ({ label: t, value: t })),
     { label: "Back", value: "back" },
@@ -197,7 +223,6 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
         Select Theme
       </Text>
       <Text color="cyan">{"━".repeat(38)}</Text>
-      {message && <Text color="green">{message}</Text>}
       <Box marginTop={1}>
         <Select options={options} onChange={handleSelect} />
       </Box>
