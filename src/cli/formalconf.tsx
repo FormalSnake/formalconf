@@ -136,6 +136,12 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
       case "upgrade-interactive":
         args.push("--upgrade-interactive");
         break;
+      case "lock-update":
+        args = ["bun", "run", `${import.meta.dir}/pkg-lock.ts`, "update"];
+        break;
+      case "lock-status":
+        args = ["bun", "run", `${import.meta.dir}/pkg-lock.ts`, "status"];
+        break;
     }
 
     const result = await exec(args);
@@ -171,6 +177,8 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
           { label: "Sync with purge", value: "sync-purge" },
           { label: "Upgrade all (with verification)", value: "upgrade" },
           { label: "Upgrade interactive", value: "upgrade-interactive" },
+          { label: "Update lockfile", value: "lock-update" },
+          { label: "Lockfile status", value: "lock-status" },
           { label: "Back", value: "back" },
         ]}
         onChange={handleAction}

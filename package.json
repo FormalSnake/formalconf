@@ -6,6 +6,7 @@
     "formalconf": "bun run src/cli/formalconf.tsx",
     "config": "bun run src/cli/config-manager.ts",
     "pkg-sync": "bun run src/cli/pkg-sync.ts",
+    "pkg-lock": "bun run src/cli/pkg-lock.ts",
     "theme": "bun run src/cli/set-theme.ts",
     "typecheck": "bun tsc --noEmit"
   },

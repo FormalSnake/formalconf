@@ -30,6 +30,24 @@ export interface UpgradeablePackage {
   type: "formula" | "cask" | "mas";
 }
 
+export interface LockedFormula {
+  version: string;
+  tap: string;
+  installedAt: string;
+}
+
+export interface LockedCask {
+  version: string;
+  installedAt: string;
+}
+
+export interface PkgLock {
+  version: number;
+  lastUpdated: string;
+  formulas: Record<string, LockedFormula>;
+  casks: Record<string, LockedCask>;
+}
+
 export const SYSTEM_APP_IDS: readonly number[] = [
   409183694, // Keynote
   409203825, // Numbers

@@ -1,6 +1,7 @@
 import { parseArgs } from "util";
 import { exec, execLive, commandExists } from "../lib/shell";
 import { loadPkgConfig } from "../lib/config";
+import { updateLockfile } from "../lib/lockfile";
 import type { PkgConfig, UpgradeablePackage, MasApp } from "../types/pkg-config";
 import { SYSTEM_APP_IDS } from "../types/pkg-config";
 
@@ -170,6 +171,12 @@ async function upgradeWithVerification(): Promise<UpgradeResult> {
   console.log(`\n${colors.cyan}=== Cleanup ===${colors.reset}\n`);
   await execLive(["brew", "cleanup"]);
 
+  // Update lockfile
+  console.log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
+  const lock = await updateLockfile();
+  const lockTotal = Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
+  console.log(`  Locked ${lockTotal} packages`);
+
   return result;
 }
 
@@ -216,6 +223,10 @@ async function upgradeInteractive(): Promise<void> {
   }
 
   await execLive(["brew", "cleanup"]);
+
+  // Update lockfile
+  console.log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
+  await updateLockfile();
 }
 
 async function syncPackages(config: PkgConfig): Promise<void> {
@@ -286,6 +297,12 @@ async function syncPackages(config: PkgConfig): Promise<void> {
   if (config.config.purge) {
     await purgeUnlisted(config, config.config.purgeInteractive);
   }
+
+  // Update lockfile
+  console.log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
+  const lock = await updateLockfile();
+  const lockTotal = Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
+  console.log(`  Locked ${lockTotal} packages`);
 
   console.log(`\n${colors.green}=== Sync complete ===${colors.reset}\n`);
 }
