@@ -13,9 +13,9 @@ interface FooterProps {
 }
 
 const defaultShortcuts: Shortcut[] = [
-  { key: "↑↓", label: "Navigate" },
-  { key: "Enter", label: "Select" },
-  { key: "ESC", label: "Back" },
+  { key: "↑↓/jk", label: "Navigate" },
+  { key: "Enter/l", label: "Select" },
+  { key: "ESC/h", label: "Back" },
   { key: "q", label: "Quit" },
 ];
 

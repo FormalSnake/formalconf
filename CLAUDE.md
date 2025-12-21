@@ -4,78 +4,48 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-### Core Scripts
-- `./formalconf.sh` - Launch interactive TUI for all management tasks
-- `./config-manager.sh <command>` - Direct dotfile management with GNU Stow
-- `./pkg-sync.sh pkg-config.json` - Synchronize packages from configuration
-- `./set-theme.sh <theme-name>` - Apply visual theme across applications
-
-### Common Development Tasks
-- **Test config changes**: `./config-manager.sh status` - Check link status
-- **Apply all configs**: `./config-manager.sh stow-all` - Link all dotfiles
-- **Remove all configs**: `./config-manager.sh unstow-all` - Remove all links
-- **List available packages**: `./config-manager.sh list`
-- **Import existing config**: `./config-manager.sh adopt <package-name>`
-- **List themes**: `./set-theme.sh` (no arguments)
-- **Package sync with purge**: Modify `pkg-config.json` config.purge to true
+```bash
+bun run formalconf        # Launch interactive TUI
+bun run config <cmd>      # Config management (stow, unstow, status, list, stow-all, unstow-all)
+bun run pkg-sync          # Sync packages from ~/.config/formalconf/pkg-config.json
+bun run pkg-sync --purge  # Sync and remove unlisted packages
+bun run theme <name>      # Apply a theme
+bun run typecheck         # Run TypeScript type checking
+```
 
 ## Architecture
 
-### System Overview
-FormalConf is a comprehensive dotfiles management system for macOS that combines:
-- **GNU Stow-based configuration management** for symlink-based dotfile deployment
-- **Homebrew package synchronization** with intelligent dependency handling
-- **Symlink-based theme system** for instant visual theme switching
+### Overview
+FormalConf is a dotfiles management TUI for macOS built with Ink (React for CLI). It combines GNU Stow-based config management, Homebrew package sync, and symlink-based theme switching.
 
-### Core Components
-
-#### Configuration Management (`config-manager.sh`)
-- Uses GNU Stow for dotfile symlink management
-- Packages stored in `configs/` directory with home directory structure
-- Supports adoption of existing configurations into the repo
-- Each package in `configs/` maintains the target home directory structure
-
-#### Package Synchronization (`pkg-sync.sh`)
-- Driven by `pkg-config.json` configuration file
-- Supports Homebrew packages, casks, and Mac App Store apps via `mas`
-- Intelligent purge mode that preserves system dependencies
-- Handles taps, packages, casks, and MAS apps in unified workflow
-
-#### Theme System (`set-theme.sh`)
-- Themes stored in `themes/` directory with per-application config files
-- Uses symlinks to `~/.config/formalconf/current/theme/` for instant switching
-- Each theme contains app-specific configuration files (e.g., `ghostty.conf`, `btop.theme`)
-- Applications read from the symlinked theme directory
-
-#### Interactive TUI (`formalconf.sh`)
-- Main user interface with colored menu system
-- Provides access to all core functionality
-- Submenu navigation for different management areas
-
-### Directory Structure
+### Source Structure
 ```
-configs/               # Dotfile packages (GNU Stow format)
-├── aerospace/         # Window manager config
-├── fish/             # Shell configuration
-├── neovim/           # Editor configuration
-└── ...
-
-themes/               # Visual themes
-├── tokyo-night/      # Theme variant
-├── matte-black/      # Theme variant
-└── ...
-
-pkg-config.json       # Package definitions (brew, cask, mas)
+src/
+├── cli/              # Entry points (run directly with bun)
+│   ├── formalconf.tsx    # Main TUI app
+│   ├── config-manager.ts # Stow operations
+│   ├── pkg-sync.ts       # Homebrew/MAS sync
+│   └── set-theme.ts      # Theme switching
+├── components/       # Ink React components
+│   ├── layout/           # Layout primitives (Panel, Breadcrumb, Footer)
+│   └── ui/               # UI elements (StatusIndicator, Divider)
+├── hooks/            # React hooks (useTerminalSize, useSystemStatus)
+├── lib/              # Shared utilities
+│   ├── paths.ts          # Path constants (CONFIG_DIR, THEMES_DIR)
+│   ├── shell.ts          # Command execution helpers
+│   ├── config.ts         # Config loading
+│   └── theme.ts          # Theme colors
+└── types/            # TypeScript type definitions
 ```
 
-### Key Design Patterns
-- **Symlink-based management**: Both dotfiles and themes use symlinks for instant switching
-- **JSON-driven package management**: Declarative package configuration with purge capabilities
-- **GNU Stow integration**: Standard dotfile management with proper conflict handling
-- **Modular architecture**: Each script handles a specific concern with clear interfaces
+### Key Patterns
+- **User config location**: `~/.config/formalconf/` (configs, themes, pkg-config.json)
+- **CLI scripts**: Each CLI entry point in `src/cli/` can run standalone or be invoked from the TUI
+- **Shell execution**: Use `exec()` from `src/lib/shell.ts` for commands, `execLive()` for streaming output
+- **Path constants**: Import from `src/lib/paths.ts` - never hardcode paths
 
 ### Dependencies
-- GNU Stow (configuration management)
-- jq (JSON processing)
-- Homebrew (package management)
-- mas (Mac App Store CLI)
+- Ink + React for TUI
+- GNU Stow for symlink management
+- Homebrew + mas for package management
+- jq for JSON processing (external)

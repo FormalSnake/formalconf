@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { render, Box, Text, useApp, useInput } from "ink";
-import { Select, Spinner } from "@inkjs/ui";
+import { Spinner } from "@inkjs/ui";
+import { VimSelect } from "../components/ui/VimSelect";
 import { readdirSync, existsSync } from "fs";
 import { Layout } from "../components/layout/Layout";
 import { Panel } from "../components/layout/Panel";
@@ -18,7 +19,7 @@ function MainMenu({ onSelect }: { onSelect: (screen: Screen) => void }) {
 
   return (
     <Panel title="Main Menu">
-      <Select
+      <VimSelect
         options={[
           { label: "Config Manager", value: "config" },
           { label: "Package Sync", value: "packages" },
@@ -42,8 +43,8 @@ function ConfigMenu({ onBack }: { onBack: () => void }) {
   const [output, setOutput] = useState("");
   const [success, setSuccess] = useState(true);
 
-  useInput((_, key) => {
-    if (state === "menu" && (key.escape || key.leftArrow)) {
+  useInput((input, key) => {
+    if (state === "menu" && (key.escape || key.leftArrow || input === "h")) {
       onBack();
     }
   });
@@ -83,7 +84,7 @@ function ConfigMenu({ onBack }: { onBack: () => void }) {
 
   return (
     <Panel title="Config Manager">
-      <Select
+      <VimSelect
         options={[
           { label: "Stow all packages", value: "stow-all" },
           { label: "Unstow all packages", value: "unstow-all" },
@@ -102,8 +103,8 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
   const [output, setOutput] = useState("");
   const [success, setSuccess] = useState(true);
 
-  useInput((_, key) => {
-    if (state === "menu" && (key.escape || key.leftArrow)) {
+  useInput((input, key) => {
+    if (state === "menu" && (key.escape || key.leftArrow || input === "h")) {
       onBack();
     }
   });
@@ -160,7 +161,7 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
 
   return (
     <Panel title="Package Sync">
-      <Select
+      <VimSelect
         options={[
           { label: "Sync packages", value: "sync" },
           { label: "Sync with purge", value: "sync-purge" },
@@ -181,8 +182,8 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
   const [output, setOutput] = useState("");
   const [success, setSuccess] = useState(true);
 
-  useInput((_, key) => {
-    if (state === "menu" && !loading && (key.escape || key.leftArrow)) {
+  useInput((input, key) => {
+    if (state === "menu" && !loading && (key.escape || key.leftArrow || input === "h")) {
       onBack();
     }
   });
@@ -241,7 +242,7 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
           <Text dimColor>Add themes to ~/.config/formalconf/themes/</Text>
         </Box>
         <Box marginTop={1}>
-          <Select
+          <VimSelect
             options={[{ label: "Back", value: "back" }]}
             onChange={() => onBack()}
           />
@@ -257,7 +258,7 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
 
   return (
     <Panel title="Select Theme">
-      <Select options={options} onChange={handleSelect} />
+      <VimSelect options={options} onChange={handleSelect} />
     </Panel>
   );
 }
