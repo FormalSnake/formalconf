@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { render, Box, Text, useApp, useInput } from "ink";
 import { Spinner } from "@inkjs/ui";
 import { VimSelect } from "../components/ui/VimSelect";
@@ -8,6 +8,7 @@ import { Layout } from "../components/layout/Layout";
 import { Panel } from "../components/layout/Panel";
 import { CommandOutput } from "../components/CommandOutput";
 import { ThemeCard } from "../components/ThemeCard";
+import { useTerminalSize } from "../hooks/useTerminalSize";
 import { THEMES_DIR, ensureConfigDir } from "../lib/paths";
 import { parseTheme } from "../lib/theme-parser";
 import { exec } from "../lib/shell";
@@ -194,22 +195,78 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<MenuState>("menu");
   const [output, setOutput] = useState("");
   const [success, setSuccess] = useState(true);
+  const { columns, rows } = useTerminalSize();
+
+  const CARD_HEIGHT = 5;
+  const LAYOUT_OVERHEAD = 20; // header + breadcrumb + panel + footer + padding
+  const cardWidth = useMemo(() => {
+    const availableWidth = columns - 6; // panel borders + padding
+    const cardsPerRow = Math.max(1, Math.floor(availableWidth / 28));
+    return Math.floor(availableWidth / cardsPerRow);
+  }, [columns]);
+
+  const cardsPerRow = useMemo(() => {
+    const availableWidth = columns - 6;
+    return Math.max(1, Math.floor(availableWidth / 28));
+  }, [columns]);
+
+  const visibleRows = useMemo(() => {
+    const availableHeight = rows - LAYOUT_OVERHEAD;
+    return Math.max(1, Math.floor(availableHeight / CARD_HEIGHT));
+  }, [rows]);
+
+  const selectedRow = Math.floor(selectedIndex / cardsPerRow);
+  const totalRows = Math.ceil(themes.length / cardsPerRow);
+
+  const [scrollOffset, setScrollOffset] = useState(0);
+
+  useEffect(() => {
+    if (selectedRow < scrollOffset) {
+      setScrollOffset(selectedRow);
+    } else if (selectedRow >= scrollOffset + visibleRows) {
+      setScrollOffset(selectedRow - visibleRows + 1);
+    }
+  }, [selectedRow, scrollOffset, visibleRows]);
+
+  const visibleThemes = useMemo(() => {
+    const startIdx = scrollOffset * cardsPerRow;
+    const endIdx = (scrollOffset + visibleRows) * cardsPerRow;
+    return themes.slice(startIdx, endIdx);
+  }, [themes, scrollOffset, visibleRows, cardsPerRow]);
+
+  const visibleStartIndex = scrollOffset * cardsPerRow;
 
   useInput((input, key) => {
     if (state !== "menu" || loading) return;
 
-    if (key.escape || key.leftArrow || input === "h") {
+    if (key.escape) {
       onBack();
       return;
     }
 
-    if ((key.downArrow || input === "j") && selectedIndex < themes.length - 1) {
-      setSelectedIndex((i) => i + 1);
+    if (key.rightArrow || input === "l") {
+      if (selectedIndex < themes.length - 1) {
+        setSelectedIndex((i) => i + 1);
+      }
     }
-    if ((key.upArrow || input === "k") && selectedIndex > 0) {
-      setSelectedIndex((i) => i - 1);
+    if (key.leftArrow || input === "h") {
+      if (selectedIndex > 0) {
+        setSelectedIndex((i) => i - 1);
+      }
     }
-    if (key.return || input === "l") {
+    if (key.downArrow || input === "j") {
+      const nextIndex = selectedIndex + cardsPerRow;
+      if (nextIndex < themes.length) {
+        setSelectedIndex(nextIndex);
+      }
+    }
+    if (key.upArrow || input === "k") {
+      const prevIndex = selectedIndex - cardsPerRow;
+      if (prevIndex >= 0) {
+        setSelectedIndex(prevIndex);
+      }
+    }
+    if (key.return) {
       applyTheme(themes[selectedIndex]);
     }
   });
@@ -286,19 +343,30 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
     );
   }
 
+  const showScrollUp = scrollOffset > 0;
+  const showScrollDown = scrollOffset + visibleRows < totalRows;
+  const gridHeight = visibleRows * CARD_HEIGHT;
+
   return (
     <Panel title="Select Theme">
-      <Box flexDirection="column" gap={1}>
-        {themes.map((theme, index) => (
+      {showScrollUp && (
+        <Text dimColor>  ↑ {scrollOffset} more row{scrollOffset > 1 ? "s" : ""}</Text>
+      )}
+      <Box flexDirection="row" flexWrap="wrap" height={gridHeight} overflow="hidden">
+        {visibleThemes.map((theme, index) => (
           <ThemeCard
             key={theme.path}
             theme={theme}
-            isSelected={index === selectedIndex}
+            isSelected={visibleStartIndex + index === selectedIndex}
+            width={cardWidth}
           />
         ))}
       </Box>
+      {showScrollDown && (
+        <Text dimColor>  ↓ {totalRows - scrollOffset - visibleRows} more row{totalRows - scrollOffset - visibleRows > 1 ? "s" : ""}</Text>
+      )}
       <Box marginTop={1}>
-        <Text dimColor>↑↓/jk navigate • Enter/l select • Esc/h back</Text>
+        <Text dimColor>←→↑↓/hjkl navigate • Enter select • Esc back</Text>
       </Box>
     </Panel>
   );
