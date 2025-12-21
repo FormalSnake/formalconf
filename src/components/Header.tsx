@@ -4,6 +4,7 @@ import { useTerminalSize } from "../hooks/useTerminalSize";
 import { useSystemStatus } from "../hooks/useSystemStatus";
 import { StatusIndicator } from "./ui/StatusIndicator";
 import { colors, borderStyles } from "../lib/theme";
+import pkg from "../../package.json";
 
 export function Header() {
   const { columns } = useTerminalSize();
@@ -25,7 +26,7 @@ export function Header() {
           </Text>
           <Text dimColor> - Dotfiles Manager</Text>
         </Box>
-        <Text dimColor>v2.0.0</Text>
+        <Text dimColor>v{pkg.version}</Text>
       </Box>
 
       {!loading && (

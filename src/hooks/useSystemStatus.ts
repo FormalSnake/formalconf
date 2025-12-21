@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { existsSync, readlinkSync, readdirSync } from "fs";
+import { existsSync, readlinkSync, readdirSync, lstatSync } from "fs";
 import { THEME_TARGET_DIR, CONFIGS_DIR } from "../lib/paths";
-import { basename } from "path";
+import { basename, dirname, join } from "path";
 
 interface SystemStatus {
   currentTheme: string | null;
@@ -20,8 +20,15 @@ export function useSystemStatus(): SystemStatus {
     let theme: string | null = null;
     try {
       if (existsSync(THEME_TARGET_DIR)) {
-        const target = readlinkSync(THEME_TARGET_DIR);
-        theme = basename(target);
+        const entries = readdirSync(THEME_TARGET_DIR);
+        for (const entry of entries) {
+          const entryPath = join(THEME_TARGET_DIR, entry);
+          if (lstatSync(entryPath).isSymbolicLink()) {
+            const target = readlinkSync(entryPath);
+            theme = basename(dirname(target));
+            break;
+          }
+        }
       }
     } catch {}
 

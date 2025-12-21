@@ -264,6 +264,13 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
 
 function App() {
   const [screen, setScreen] = useState<Screen>("main");
+  const { exit } = useApp();
+
+  useInput((input) => {
+    if (input === "q") {
+      exit();
+    }
+  });
 
   useEffect(() => {
     ensureConfigDir();
@@ -292,4 +299,4 @@ function App() {
   );
 }
 
-render(<App />, { fullScreen: true });
+render(<App />);
