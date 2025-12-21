@@ -87,6 +87,72 @@ export async function execLive(command: string[], cwd?: string): Promise<number>
   });
 }
 
+// Streaming exec - pipes output to callback line by line
+export async function execStreaming(
+  command: string[],
+  onLine: (line: string) => void,
+  cwd?: string
+): Promise<number> {
+  if (isBun) {
+    const proc = Bun.spawn(command, {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd,
+    });
+
+    const processStream = async (stream: ReadableStream<Uint8Array>) => {
+      const reader = stream.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          onLine(line);
+        }
+      }
+
+      if (buffer) {
+        onLine(buffer);
+      }
+    };
+
+    await Promise.all([
+      processStream(proc.stdout),
+      processStream(proc.stderr),
+    ]);
+
+    return await proc.exited;
+  }
+
+  // Node fallback
+  return new Promise((resolve) => {
+    const [cmd, ...args] = command;
+    const proc = nodeSpawn(cmd, args, { cwd, shell: false });
+
+    const processData = (data: Buffer) => {
+      const text = data.toString();
+      const lines = text.split("\n");
+      for (const line of lines) {
+        if (line) onLine(line);
+      }
+    };
+
+    proc.stdout?.on("data", processData);
+    proc.stderr?.on("data", processData);
+
+    proc.on("close", (code) => {
+      resolve(code ?? 1);
+    });
+  });
+}
+
 // File read abstraction - JSON
 export async function readJson<T = unknown>(path: string): Promise<T> {
   if (isBun) {

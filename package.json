@@ -1,6 +1,6 @@
 {
   "name": "formalconf",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Dotfiles management TUI for macOS - config management, package sync, and theme switching",
   "type": "module",
   "main": "./dist/formalconf.js",

@@ -1,5 +1,6 @@
 import { parseArgs } from "util";
 import { exec, execLive, commandExists } from "../lib/shell";
+import { execStreaming } from "../lib/runtime";
 import { loadPkgConfig } from "../lib/config";
 import { updateLockfile } from "../lib/lockfile";
 import type { PkgConfig, UpgradeablePackage, MasApp } from "../types/pkg-config";
@@ -14,6 +15,31 @@ const colors = {
   bold: "\x1b[1m",
   reset: "\x1b[0m",
 };
+
+export interface PkgSyncCallbacks {
+  onLog: (line: string) => void;
+  onPrompt: (question: string, options: string[]) => Promise<string>;
+}
+
+function createDefaultCallbacks(): PkgSyncCallbacks {
+  return {
+    onLog: (line) => console.log(line),
+    onPrompt: async (question, _options) => {
+      return (prompt(question) || "").trim().toLowerCase();
+    },
+  };
+}
+
+async function runCommand(
+  command: string[],
+  callbacks: PkgSyncCallbacks | null,
+  cwd?: string
+): Promise<number> {
+  if (callbacks) {
+    return execStreaming(command, callbacks.onLog, cwd);
+  }
+  return execLive(command, cwd);
+}
 
 interface UpgradeResult {
   attempted: string[];
@@ -75,7 +101,9 @@ async function getOutdatedMas(): Promise<MasApp[]> {
     .filter((app): app is MasApp => app !== null);
 }
 
-async function upgradeWithVerification(): Promise<UpgradeResult> {
+async function upgradeWithVerification(cb: PkgSyncCallbacks | null = null): Promise<UpgradeResult> {
+  const log = cb?.onLog ?? console.log;
+
   const result: UpgradeResult = {
     attempted: [],
     succeeded: [],
@@ -83,27 +111,24 @@ async function upgradeWithVerification(): Promise<UpgradeResult> {
     stillOutdated: [],
   };
 
-  console.log(`\n${colors.cyan}=== Checking for updates ===${colors.reset}\n`);
-  await execLive(["brew", "update"]);
+  log(`\n${colors.cyan}=== Checking for updates ===${colors.reset}\n`);
+  await runCommand(["brew", "update"], cb);
 
   const beforeUpgrade = await getOutdatedPackages();
   result.attempted = beforeUpgrade.map((p) => p.name);
 
   if (beforeUpgrade.length === 0) {
-    console.log(`\n${colors.green}All brew packages are up to date${colors.reset}`);
+    log(`\n${colors.green}All brew packages are up to date${colors.reset}`);
   } else {
-    console.log(
-      `\n${colors.yellow}Found ${beforeUpgrade.length} outdated packages${colors.reset}\n`
-    );
+    log(`\n${colors.yellow}Found ${beforeUpgrade.length} outdated packages${colors.reset}\n`);
 
-    console.log(`${colors.cyan}=== Upgrading formulas ===${colors.reset}\n`);
-    await execLive(["brew", "upgrade", "--formula"]);
+    log(`${colors.cyan}=== Upgrading formulas ===${colors.reset}\n`);
+    await runCommand(["brew", "upgrade", "--formula"], cb);
 
-    console.log(`\n${colors.cyan}=== Upgrading casks ===${colors.reset}\n`);
-    await execLive(["brew", "upgrade", "--cask", "--greedy"]);
+    log(`\n${colors.cyan}=== Upgrading casks ===${colors.reset}\n`);
+    await runCommand(["brew", "upgrade", "--cask", "--greedy"], cb);
 
-    // CRITICAL: Verify upgrades actually worked
-    console.log(`\n${colors.cyan}=== Verifying upgrades ===${colors.reset}\n`);
+    log(`\n${colors.cyan}=== Verifying upgrades ===${colors.reset}\n`);
     const afterUpgrade = await getOutdatedPackages();
     const stillOutdatedSet = new Set(afterUpgrade.map((p) => p.name));
 
@@ -115,17 +140,14 @@ async function upgradeWithVerification(): Promise<UpgradeResult> {
       }
     }
 
-    // Retry individual upgrades for stubborn packages
     if (result.stillOutdated.length > 0) {
-      console.log(
-        `${colors.yellow}${result.stillOutdated.length} packages still outdated, retrying individually...${colors.reset}\n`
-      );
+      log(`${colors.yellow}${result.stillOutdated.length} packages still outdated, retrying individually...${colors.reset}\n`);
 
       for (const pkgName of [...result.stillOutdated]) {
         const pkg = afterUpgrade.find((p) => p.name === pkgName);
         if (!pkg) continue;
 
-        console.log(`  Retrying ${colors.blue}${pkgName}${colors.reset}...`);
+        log(`  Retrying ${colors.blue}${pkgName}${colors.reset}...`);
 
         const upgradeCmd =
           pkg.type === "cask"
@@ -134,7 +156,6 @@ async function upgradeWithVerification(): Promise<UpgradeResult> {
 
         const retryResult = await exec(upgradeCmd);
 
-        // Verify this specific package
         const checkResult = await exec([
           "brew",
           "outdated",
@@ -146,61 +167,57 @@ async function upgradeWithVerification(): Promise<UpgradeResult> {
         if (!stillOutdatedNow.includes(pkgName)) {
           result.succeeded.push(pkgName);
           result.stillOutdated = result.stillOutdated.filter((n) => n !== pkgName);
-          console.log(`    ${colors.green}✓ Success${colors.reset}`);
+          log(`    ${colors.green}✓ Success${colors.reset}`);
         } else {
           result.failed.push(pkgName);
           result.stillOutdated = result.stillOutdated.filter((n) => n !== pkgName);
-          console.log(
-            `    ${colors.red}✗ Failed${colors.reset} ${retryResult.stderr ? `(${retryResult.stderr.split("\n")[0]})` : ""}`
-          );
+          log(`    ${colors.red}✗ Failed${colors.reset} ${retryResult.stderr ? `(${retryResult.stderr.split("\n")[0]})` : ""}`);
         }
       }
     }
   }
 
-  // MAS upgrades
   if (await commandExists("mas")) {
     const masOutdated = await getOutdatedMas();
     if (masOutdated.length > 0) {
-      console.log(`\n${colors.cyan}=== Upgrading Mac App Store apps ===${colors.reset}\n`);
-      await execLive(["mas", "upgrade"]);
+      log(`\n${colors.cyan}=== Upgrading Mac App Store apps ===${colors.reset}\n`);
+      await runCommand(["mas", "upgrade"], cb);
     }
   }
 
-  // Cleanup
-  console.log(`\n${colors.cyan}=== Cleanup ===${colors.reset}\n`);
-  await execLive(["brew", "cleanup"]);
+  log(`\n${colors.cyan}=== Cleanup ===${colors.reset}\n`);
+  await runCommand(["brew", "cleanup"], cb);
 
-  // Update lockfile
-  console.log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
+  log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
   const lock = await updateLockfile();
   const lockTotal = Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
-  console.log(`  Locked ${lockTotal} packages`);
+  log(`  Locked ${lockTotal} packages`);
 
   return result;
 }
 
-async function upgradeInteractive(): Promise<void> {
-  console.log(`\n${colors.cyan}=== Checking for updates ===${colors.reset}\n`);
-  await execLive(["brew", "update"]);
+async function upgradeInteractive(cb: PkgSyncCallbacks | null = null): Promise<void> {
+  const log = cb?.onLog ?? console.log;
+  const askPrompt = cb?.onPrompt ?? (async (q: string) => (prompt(q) || "").trim().toLowerCase());
+
+  log(`\n${colors.cyan}=== Checking for updates ===${colors.reset}\n`);
+  await runCommand(["brew", "update"], cb);
 
   const outdated = await getOutdatedPackages();
 
   if (outdated.length === 0) {
-    console.log(`\n${colors.green}All packages are up to date${colors.reset}\n`);
+    log(`\n${colors.green}All packages are up to date${colors.reset}\n`);
     return;
   }
 
-  console.log(
-    `\n${colors.yellow}Found ${outdated.length} outdated packages${colors.reset}\n`
-  );
+  log(`\n${colors.yellow}Found ${outdated.length} outdated packages${colors.reset}\n`);
 
   for (const pkg of outdated) {
-    const question = `Upgrade ${colors.blue}${pkg.name}${colors.reset} (${pkg.type})? [y/n/q]: `;
-    const answer = (prompt(question) || "").trim().toLowerCase();
+    const question = `Upgrade ${colors.blue}${pkg.name}${colors.reset} (${pkg.type})?`;
+    const answer = await askPrompt(question, ["y", "n", "q"]);
 
     if (answer === "q") {
-      console.log(`\n${colors.yellow}Upgrade cancelled${colors.reset}`);
+      log(`\n${colors.yellow}Upgrade cancelled${colors.reset}`);
       return;
     }
     if (answer === "y" || answer === "yes") {
@@ -208,74 +225,68 @@ async function upgradeInteractive(): Promise<void> {
         pkg.type === "cask"
           ? ["brew", "upgrade", "--cask", pkg.name]
           : ["brew", "upgrade", pkg.name];
-      await execLive(cmd);
+      await runCommand(cmd, cb);
     }
   }
 
-  // Verify and report final status
   const stillOutdated = await getOutdatedPackages();
   if (stillOutdated.length > 0) {
-    console.log(
-      `\n${colors.yellow}Still outdated: ${stillOutdated.map((p) => p.name).join(", ")}${colors.reset}`
-    );
+    log(`\n${colors.yellow}Still outdated: ${stillOutdated.map((p) => p.name).join(", ")}${colors.reset}`);
   } else {
-    console.log(`\n${colors.green}All selected packages upgraded successfully${colors.reset}`);
+    log(`\n${colors.green}All selected packages upgraded successfully${colors.reset}`);
   }
 
-  await execLive(["brew", "cleanup"]);
+  await runCommand(["brew", "cleanup"], cb);
 
-  // Update lockfile
-  console.log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
+  log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
   await updateLockfile();
 }
 
-async function syncPackages(config: PkgConfig): Promise<void> {
+async function syncPackages(config: PkgConfig, cb: PkgSyncCallbacks | null = null): Promise<void> {
+  const log = cb?.onLog ?? console.log;
+
   if (config.config.autoUpdate) {
-    console.log(`\n${colors.cyan}=== Updating Homebrew ===${colors.reset}\n`);
-    await execLive(["brew", "update"]);
+    log(`\n${colors.cyan}=== Updating Homebrew ===${colors.reset}\n`);
+    await runCommand(["brew", "update"], cb);
   }
 
-  // Install taps
-  console.log(`\n${colors.cyan}=== Installing taps ===${colors.reset}\n`);
+  log(`\n${colors.cyan}=== Installing taps ===${colors.reset}\n`);
   const tappedResult = await exec(["brew", "tap"]);
   const tapped = tappedResult.stdout.split("\n").filter(Boolean);
 
   for (const tap of config.taps) {
     if (!tapped.includes(tap)) {
-      console.log(`  Adding tap: ${colors.blue}${tap}${colors.reset}`);
-      await execLive(["brew", "tap", tap]);
+      log(`  Adding tap: ${colors.blue}${tap}${colors.reset}`);
+      await runCommand(["brew", "tap", tap], cb);
     }
   }
 
-  // Install formulas
-  console.log(`\n${colors.cyan}=== Installing packages ===${colors.reset}\n`);
+  log(`\n${colors.cyan}=== Installing packages ===${colors.reset}\n`);
   const installedFormulas = (await exec(["brew", "list", "--formula"])).stdout
     .split("\n")
     .filter(Boolean);
 
   for (const pkg of config.packages) {
     if (!installedFormulas.includes(pkg)) {
-      console.log(`  Installing: ${colors.blue}${pkg}${colors.reset}`);
-      await execLive(["brew", "install", pkg]);
+      log(`  Installing: ${colors.blue}${pkg}${colors.reset}`);
+      await runCommand(["brew", "install", pkg], cb);
     }
   }
 
-  // Install casks
-  console.log(`\n${colors.cyan}=== Installing casks ===${colors.reset}\n`);
+  log(`\n${colors.cyan}=== Installing casks ===${colors.reset}\n`);
   const installedCasks = (await exec(["brew", "list", "--cask"])).stdout
     .split("\n")
     .filter(Boolean);
 
   for (const cask of config.casks) {
     if (!installedCasks.includes(cask)) {
-      console.log(`  Installing: ${colors.blue}${cask}${colors.reset}`);
-      await execLive(["brew", "install", "--cask", cask]);
+      log(`  Installing: ${colors.blue}${cask}${colors.reset}`);
+      await runCommand(["brew", "install", "--cask", cask], cb);
     }
   }
 
-  // Install MAS apps
   if (await commandExists("mas")) {
-    console.log(`\n${colors.cyan}=== Installing Mac App Store apps ===${colors.reset}\n`);
+    log(`\n${colors.cyan}=== Installing Mac App Store apps ===${colors.reset}\n`);
     const masResult = await exec(["mas", "list"]);
     const installedMas = masResult.stdout
       .split("\n")
@@ -287,61 +298,58 @@ async function syncPackages(config: PkgConfig): Promise<void> {
 
     for (const [name, id] of Object.entries(config.mas)) {
       if (!installedMas.includes(id)) {
-        console.log(`  Installing: ${colors.blue}${name}${colors.reset}`);
-        await execLive(["mas", "install", String(id)]);
+        log(`  Installing: ${colors.blue}${name}${colors.reset}`);
+        await runCommand(["mas", "install", String(id)], cb);
       }
     }
   }
 
-  // Purge if enabled
   if (config.config.purge) {
-    await purgeUnlisted(config, config.config.purgeInteractive);
+    await purgeUnlisted(config, config.config.purgeInteractive, cb);
   }
 
-  // Update lockfile
-  console.log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
+  log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
   const lock = await updateLockfile();
   const lockTotal = Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
-  console.log(`  Locked ${lockTotal} packages`);
+  log(`  Locked ${lockTotal} packages`);
 
-  console.log(`\n${colors.green}=== Sync complete ===${colors.reset}\n`);
+  log(`\n${colors.green}=== Sync complete ===${colors.reset}\n`);
 }
 
 async function purgeUnlisted(
   config: PkgConfig,
-  interactive: boolean
+  interactive: boolean,
+  cb: PkgSyncCallbacks | null = null
 ): Promise<void> {
-  console.log(`\n${colors.cyan}=== Checking for unlisted packages ===${colors.reset}\n`);
+  const log = cb?.onLog ?? console.log;
+  const askPrompt = cb?.onPrompt ?? (async (q: string) => (prompt(q) || "").trim().toLowerCase());
 
-  // Check formulas
+  log(`\n${colors.cyan}=== Checking for unlisted packages ===${colors.reset}\n`);
+
   const installedFormulas = (await exec(["brew", "list", "--formula"])).stdout
     .split("\n")
     .filter(Boolean);
 
   for (const pkg of installedFormulas) {
     if (!config.packages.includes(pkg)) {
-      // Check if it has dependents
       const usesResult = await exec(["brew", "uses", "--installed", pkg]);
       if (usesResult.stdout.trim()) {
-        console.log(
-          `  ${colors.yellow}Skipping ${pkg} (has dependents)${colors.reset}`
-        );
+        log(`  ${colors.yellow}Skipping ${pkg} (has dependents)${colors.reset}`);
         continue;
       }
 
       if (interactive) {
-        const answer = (prompt(`  Remove ${colors.red}${pkg}${colors.reset}? [y/n]: `) || "").trim().toLowerCase();
+        const answer = await askPrompt(`Remove ${colors.red}${pkg}${colors.reset}?`, ["y", "n"]);
         if (answer === "y") {
-          await execLive(["brew", "uninstall", pkg]);
+          await runCommand(["brew", "uninstall", pkg], cb);
         }
       } else {
-        console.log(`  Removing: ${colors.red}${pkg}${colors.reset}`);
-        await execLive(["brew", "uninstall", pkg]);
+        log(`  Removing: ${colors.red}${pkg}${colors.reset}`);
+        await runCommand(["brew", "uninstall", pkg], cb);
       }
     }
   }
 
-  // Check casks
   const installedCasks = (await exec(["brew", "list", "--cask"])).stdout
     .split("\n")
     .filter(Boolean);
@@ -349,18 +357,17 @@ async function purgeUnlisted(
   for (const cask of installedCasks) {
     if (!config.casks.includes(cask)) {
       if (interactive) {
-        const answer = (prompt(`  Remove cask ${colors.red}${cask}${colors.reset}? [y/n]: `) || "").trim().toLowerCase();
+        const answer = await askPrompt(`Remove cask ${colors.red}${cask}${colors.reset}?`, ["y", "n"]);
         if (answer === "y") {
-          await execLive(["brew", "uninstall", "--cask", cask]);
+          await runCommand(["brew", "uninstall", "--cask", cask], cb);
         }
       } else {
-        console.log(`  Removing cask: ${colors.red}${cask}${colors.reset}`);
-        await execLive(["brew", "uninstall", "--cask", cask]);
+        log(`  Removing cask: ${colors.red}${cask}${colors.reset}`);
+        await runCommand(["brew", "uninstall", "--cask", cask], cb);
       }
     }
   }
 
-  // Check MAS apps (with system app protection)
   if (await commandExists("mas")) {
     const masResult = await exec(["mas", "list"]);
     const installedMas = masResult.stdout
@@ -378,27 +385,26 @@ async function purgeUnlisted(
 
     for (const app of installedMas) {
       if (SYSTEM_APP_IDS.includes(app.id)) {
-        continue; // Skip system apps
+        continue;
       }
 
       if (!configMasIds.includes(app.id)) {
         if (interactive) {
-          const answer = (prompt(`  Remove app ${colors.red}${app.name}${colors.reset}? [y/n]: `) || "").trim().toLowerCase();
+          const answer = await askPrompt(`Remove app ${colors.red}${app.name}${colors.reset}?`, ["y", "n"]);
           if (answer === "y") {
-            await execLive(["mas", "uninstall", String(app.id)]);
+            await runCommand(["mas", "uninstall", String(app.id)], cb);
           }
         } else {
-          console.log(`  Removing app: ${colors.red}${app.name}${colors.reset}`);
-          await execLive(["mas", "uninstall", String(app.id)]);
+          log(`  Removing app: ${colors.red}${app.name}${colors.reset}`);
+          await runCommand(["mas", "uninstall", String(app.id)], cb);
         }
       }
     }
   }
 
-  // Autoremove and cleanup
-  console.log(`\n${colors.cyan}=== Cleaning up ===${colors.reset}\n`);
-  await execLive(["brew", "autoremove"]);
-  await execLive(["brew", "cleanup"]);
+  log(`\n${colors.cyan}=== Cleaning up ===${colors.reset}\n`);
+  await runCommand(["brew", "autoremove"], cb);
+  await runCommand(["brew", "cleanup"], cb);
 }
 
 function printUsage(): void {
@@ -420,6 +426,58 @@ Examples:
 export interface PkgSyncResult {
   output: string;
   success: boolean;
+}
+
+export async function runPkgSyncWithCallbacks(
+  args: string[],
+  callbacks: PkgSyncCallbacks
+): Promise<PkgSyncResult> {
+  const { values, positionals } = parseArgs({
+    args,
+    options: {
+      "upgrade-only": { type: "boolean", default: false },
+      "upgrade-interactive": { type: "boolean", default: false },
+      purge: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
+    },
+    allowPositionals: true,
+  });
+
+  try {
+    if (!(await commandExists("brew"))) {
+      callbacks.onLog(`${colors.red}Error: Homebrew not installed${colors.reset}`);
+      return { output: "Homebrew not installed", success: false };
+    }
+  } catch {
+    return { output: "Homebrew not installed", success: false };
+  }
+
+  if (values["upgrade-interactive"]) {
+    await upgradeInteractive(callbacks);
+    return { output: "Interactive upgrade complete", success: true };
+  }
+
+  if (values["upgrade-only"]) {
+    const result = await upgradeWithVerification(callbacks);
+    let output = "Upgrade complete\n";
+    if (result.succeeded.length > 0) {
+      output += `Upgraded: ${result.succeeded.join(", ")}\n`;
+    }
+    if (result.failed.length > 0) {
+      output += `Failed: ${result.failed.join(", ")}`;
+    }
+    return { output, success: result.failed.length === 0 };
+  }
+
+  const configPath = positionals[0];
+  const config = await loadPkgConfig(configPath);
+
+  if (values.purge) {
+    config.config.purge = true;
+  }
+
+  await syncPackages(config, callbacks);
+  return { output: "Sync complete", success: true };
 }
 
 export async function runPkgSync(args: string[]): Promise<PkgSyncResult> {

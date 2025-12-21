@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { render, Box, Text, useApp, useInput } from "ink";
 import { Spinner } from "@inkjs/ui";
 import { VimSelect } from "../components/ui/VimSelect";
@@ -8,12 +8,15 @@ import { Layout } from "../components/layout/Layout";
 import { Panel } from "../components/layout/Panel";
 import { CommandOutput } from "../components/CommandOutput";
 import { ThemeCard } from "../components/ThemeCard";
+import { ScrollableLog } from "../components/ScrollableLog";
+import { PromptInput } from "../components/PromptInput";
 import { useTerminalSize } from "../hooks/useTerminalSize";
 import { THEMES_DIR, ensureConfigDir } from "../lib/paths";
 import { parseTheme } from "../lib/theme-parser";
 import { colors } from "../lib/theme";
 import { runConfigManager } from "./config-manager";
-import { runPkgSync } from "./pkg-sync";
+import { runPkgSync, runPkgSyncWithCallbacks } from "./pkg-sync";
+import type { PkgSyncCallbacks } from "./pkg-sync";
 import { runPkgLock } from "./pkg-lock";
 import { runSetTheme } from "./set-theme";
 import type { Theme } from "../types/theme";
@@ -105,16 +108,47 @@ function ConfigMenu({ onBack }: { onBack: () => void }) {
   );
 }
 
+interface PendingPrompt {
+  question: string;
+  options: string[];
+  resolve: (answer: string) => void;
+}
+
 function PackageMenu({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<MenuState>("menu");
-  const [output, setOutput] = useState("");
+  const [lines, setLines] = useState<string[]>([]);
+  const [pendingPrompt, setPendingPrompt] = useState<PendingPrompt | null>(null);
   const [success, setSuccess] = useState(true);
+  const isRunningRef = useRef(false);
 
   useInput((input, key) => {
     if (state === "menu" && (key.escape || key.leftArrow || input === "h")) {
       onBack();
     }
+    if (state === "result") {
+      setState("menu");
+      setLines([]);
+    }
   });
+
+  const callbacks: PkgSyncCallbacks = useMemo(() => ({
+    onLog: (line: string) => {
+      setLines((prev) => [...prev, line]);
+    },
+    onPrompt: (question: string, options: string[]) => {
+      return new Promise<string>((resolve) => {
+        setPendingPrompt({ question, options, resolve });
+      });
+    },
+  }), []);
+
+  const handlePromptAnswer = useCallback((answer: string) => {
+    if (pendingPrompt) {
+      setLines((prev) => [...prev, `> ${answer}`]);
+      pendingPrompt.resolve(answer);
+      setPendingPrompt(null);
+    }
+  }, [pendingPrompt]);
 
   const handleAction = async (action: string) => {
     if (action === "back") {
@@ -122,22 +156,27 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
       return;
     }
 
+    if (isRunningRef.current) return;
+    isRunningRef.current = true;
+
     setState("running");
+    setLines([]);
+    setPendingPrompt(null);
 
     let result: { output: string; success: boolean };
 
     switch (action) {
       case "sync":
-        result = await runPkgSync([]);
+        result = await runPkgSyncWithCallbacks([], callbacks);
         break;
       case "sync-purge":
-        result = await runPkgSync(["--purge"]);
+        result = await runPkgSyncWithCallbacks(["--purge"], callbacks);
         break;
       case "upgrade":
-        result = await runPkgSync(["--upgrade-only"]);
+        result = await runPkgSyncWithCallbacks(["--upgrade-only"], callbacks);
         break;
       case "upgrade-interactive":
-        result = await runPkgSync(["--upgrade-interactive"]);
+        result = await runPkgSyncWithCallbacks(["--upgrade-interactive"], callbacks);
         break;
       case "lock-update":
         result = await runPkgLock(["update"]);
@@ -149,27 +188,37 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
         result = { output: "Unknown action", success: false };
     }
 
-    setOutput(result.output);
     setSuccess(result.success);
     setState("result");
+    isRunningRef.current = false;
   };
 
   if (state === "running") {
     return (
       <Panel title="Package Sync">
-        <Spinner label="Syncing packages..." />
+        <ScrollableLog lines={lines} />
+        {pendingPrompt && (
+          <PromptInput
+            question={pendingPrompt.question}
+            options={pendingPrompt.options}
+            onAnswer={handlePromptAnswer}
+          />
+        )}
       </Panel>
     );
   }
 
   if (state === "result") {
     return (
-      <CommandOutput
-        title="Package Sync"
-        output={output}
-        success={success}
-        onDismiss={() => setState("menu")}
-      />
+      <Panel title="Package Sync" borderColor={success ? colors.success : colors.error}>
+        <ScrollableLog lines={lines} autoScroll={false} />
+        <Box marginTop={1}>
+          <Text color={success ? colors.success : colors.error}>
+            {success ? "Done" : "Failed"}
+          </Text>
+        </Box>
+        <Text dimColor>Press any key to continue...</Text>
+      </Panel>
     );
   }
 

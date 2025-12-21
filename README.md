@@ -1,280 +1,240 @@
-# FormalConf
+<div align="center">
 
-A comprehensive dotfiles management system for macOS that combines configuration management, package synchronization, and theme switching in one unified interface.
+# ⚙️ FormalConf
 
-![FormalConf Manager](https://img.shields.io/badge/Platform-macOS-blue) ![License](https://img.shields.io/badge/License-MIT-green)
+### A macOS dotfiles management TUI built with React & Ink
 
-## ✨ Features
+[![Ink](https://img.shields.io/badge/Ink-5.0.1-00C7B7?style=for-the-badge&logo=react&logoColor=white)](https://github.com/vadimdemedes/ink)
+[![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Bun](https://img.shields.io/badge/Bun-Runtime-F9F1E1?style=for-the-badge&logo=bun&logoColor=black)](https://bun.sh/)
 
-- **📦 Configuration Management**: Automated dotfile linking using GNU Stow
-- **🔄 Package Synchronization**: Intelligent Homebrew package management with purge capabilities
-- **🎨 Theme System**: Easy switching between visual themes across all applications
-- **🖥️ Interactive TUI**: Beautiful terminal interface for easy management
-- **⚡ Smart Adoption**: Import existing configurations seamlessly
+[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Development](#development) • [Tech Stack](#tech-stack) • [Contributing](#contributing)
 
-## 🚀 Quick Start
+</div>
 
-1. **Clone and Navigate**
-   ```bash
-   git clone <your-repo-url> ~/.dotfiles
-   cd ~/.dotfiles
-   ```
+---
 
-2. **Install Dependencies**
-   ```bash
-   brew install stow jq mas
-   ```
+## Features
 
-3. **Launch FormalConf**
-   ```bash
-   ./formalconf.sh
-   ```
+### **Configuration Management**
+- **GNU Stow integration** for symlink-based dotfile management
+- **Stow, unstow, restow** operations for individual or all configs
+- **Status checking** to verify symlink integrity
+- Maintains clean home directory structure
 
-## 📁 Project Structure
+### **Package Synchronization**
+- **Homebrew formulas & casks** sync from a single JSON config
+- **Mac App Store apps** via `mas` CLI integration
+- **Purge mode** to remove unlisted packages
+- **Lockfile support** for reproducible package installations
+- Smart dependency detection prevents removal of system-critical apps
 
-```
-formalconf/
-├── formalconf.sh           # Main TUI interface
-├── config-manager.sh       # Dotfile management with GNU Stow
-├── pkg-sync.sh            # Package synchronization engine
-├── set-theme.sh           # Theme switching utility
-├── pkg-config.json        # Package configuration
-├── configs/               # Dotfile packages
-│   ├── aerospace/         # Window manager config
-│   ├── btop/             # System monitor config
-│   ├── fish/             # Shell configuration
-│   ├── ghostty/          # Terminal emulator config
-│   ├── neovim/           # Editor configuration
-│   └── tmux/             # Terminal multiplexer config
-└── themes/               # Visual themes
-    ├── tokyo-night/      # Dark theme
-    └── matte-black/      # Black theme
-```
+### **Theme System**
+- **Omarchy-compatible themes** with symlink-based switching
+- Application-specific theme configs (Ghostty, Btop, Neovim, etc.)
+- Theme discovery with metadata parsing (author, colors, light/dark mode)
+- Background support as part of themes
 
-## 🔧 Usage
+### **Interactive TUI**
+- **Beautiful React-based interface** powered by Ink
+- **Vim-style navigation** (hjkl, Enter, Esc)
+- Breadcrumb navigation showing current context
+- Real-time status indicators for theme and config state
+- Responsive grid-based theme selector
 
-### Interactive Mode
+---
 
-Launch the main interface:
+## Installation
+
+### Prerequisites
+
+The following tools must be installed on your system:
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| **Bun** | JavaScript runtime | [bun.sh](https://bun.sh/) |
+| **GNU Stow** | Symlink manager | `brew install stow` |
+| **Homebrew** | Package manager | [brew.sh](https://brew.sh/) |
+| **mas** | Mac App Store CLI | `brew install mas` |
+| **jq** | JSON processor | `brew install jq` |
+
+### Quick Start
+
 ```bash
-./formalconf.sh
+# Run directly with bunx (recommended)
+bunx formalconf
+
+# Or with npx
+npx formalconf
 ```
 
-Navigate through the menu options:
-- **Config Manager**: Manage dotfile linking
-- **Package Sync**: Install/update packages
-- **Set Theme**: Switch visual themes
+[![npm](https://img.shields.io/npm/v/formalconf?style=flat-square&logo=npm)](https://www.npmjs.com/package/formalconf)
 
-### Command Line Usage
+---
 
-#### Configuration Management
-```bash
-# Link all configurations
-./config-manager.sh stow-all
+## Usage
 
-# Link specific package
-./config-manager.sh stow neovim
+### Configuration Directory
 
-# Remove all links
-./config-manager.sh unstow-all
+FormalConf expects your configuration files in `~/.config/formalconf/`:
 
-# Check status
-./config-manager.sh status
-
-# List available packages
-./config-manager.sh list
-
-# Adopt existing configs
-./config-manager.sh adopt fish
+```
+~/.config/formalconf/
+├── configs/           # Your dotfile packages (stow directories)
+│   ├── nvim/          # Example: Neovim config
+│   ├── tmux/          # Example: tmux config
+│   └── ...
+├── themes/            # Omarchy-compatible themes
+├── pkg-config.json    # Package sync configuration
+└── pkg-lock.json      # Package version lockfile
 ```
 
-#### Package Synchronization
-```bash
-# Sync packages from config
-./pkg-sync.sh pkg-config.json
+### Dotfile Configs
 
-# Sync with purge (remove unlisted)
-jq '.config.purge = true' pkg-config.json > temp.json && ./pkg-sync.sh temp.json
+Place your dotfile packages in `~/.config/formalconf/configs/`. Each subdirectory is a "stow package" that mirrors your home directory structure:
+
+```
+configs/
+└── nvim/
+    └── .config/
+        └── nvim/
+            └── init.lua
 ```
 
-#### Theme Management
-```bash
-# Apply theme
-./set-theme.sh tokyo-night
+When stowed, this creates: `~/.config/nvim/init.lua`
 
-# List available themes
-./set-theme.sh
-```
+### Package Config
 
-## ⚙️ Configuration
-
-### Package Configuration (`pkg-config.json`)
-
-Define your system packages in JSON format:
+Define your packages in `pkg-config.json`:
 
 ```json
 {
   "config": {
-    "purge": true,           // Remove unlisted packages
-    "autoUpdate": true       // Update Homebrew before sync
+    "purge": false,
+    "autoUpdate": true
   },
-  "taps": [                  // Homebrew taps
-    "oven-sh/bun",
-    "nikitabobko/tap"
-  ],
-  "packages": [              // CLI tools
-    "neovim",
-    "tmux",
-    "fish"
-  ],
-  "casks": [                 // GUI applications
-    "ghostty",
-    "raycast",
-    "aerospace"
-  ],
-  "mas": {                   // Mac App Store apps
-    "Xcode": 497799835,
-    "WhatsApp": 310633997
+  "taps": ["oven-sh/bun"],
+  "packages": ["neovim", "tmux", "ripgrep"],
+  "casks": ["ghostty", "raycast"],
+  "mas": {
+    "Xcode": 497799835
   }
 }
 ```
 
-### Adding New Configurations
+### Theme Compatibility
 
-1. **Create Package Directory**
-   ```bash
-   mkdir -p configs/myapp/.config/myapp
-   ```
-
-2. **Add Configuration Files**
-   ```bash
-   # Place your config files maintaining home directory structure
-   configs/myapp/.config/myapp/config.toml
-   ```
-
-3. **Link Configuration**
-   ```bash
-   ./config-manager.sh stow myapp
-   ```
-
-### Creating Themes
-
-1. **Create Theme Directory**
-   ```bash
-   mkdir themes/my-theme
-   ```
-
-2. **Add Theme Files**
-   ```bash
-   # Add configuration files for each app
-   themes/my-theme/ghostty.conf
-   themes/my-theme/btop.theme
-   themes/my-theme/neovim.lua
-   ```
-
-3. **Apply Theme**
-   ```bash
-   ./set-theme.sh my-theme
-   ```
-
-## 🛠️ Customization
-
-### Supported Applications
-
-Current configurations include:
-- **Aerospace**: Tiling window manager
-- **Btop**: System resource monitor
-- **FastFetch**: System information tool
-- **Fish**: Friendly shell
-- **Ghostty**: Fast terminal emulator
-- **Git**: Version control system
-- **Neovim**: Modern Vim-based editor
-- **Tmux**: Terminal multiplexer
-
-### Adding New Applications
-
-1. **Create the package structure** in `configs/`
-2. **Add theme variants** in `themes/*/`
-3. **Update package lists** in `pkg-config.json`
-
-### Configuration Adoption
-
-Use the adoption feature to import existing configurations:
-
-```bash
-# This will move your existing config into the repo
-./config-manager.sh adopt fish
-```
-
-## 🔍 Advanced Features
-
-### Package Management
-
-- **Smart Dependencies**: Skips removing packages required by others
-- **System App Protection**: Prevents removal of essential macOS apps
-- **Failure Handling**: Continues operation even if individual packages fail
-- **Cleanup**: Automatically removes orphaned dependencies
-
-### Theme System
-
-- **Symlink-based**: Instant theme switching without file copying
-- **Application-specific**: Each app can have its own theme configuration
-- **Extensible**: Easy to add new applications and themes
-
-### Status Monitoring
-
-Get detailed information about your system state:
-- Configuration link status
-- Package installation status
-- Theme application status
-
-## 🚨 Troubleshooting
-
-### Common Issues
-
-**Stow conflicts:**
-```bash
-# Remove conflicting files first
-./config-manager.sh unstow-all
-# Then restow
-./config-manager.sh stow-all
-```
-
-**Package sync failures:**
-```bash
-# Update Homebrew
-brew update && brew doctor
-# Retry sync
-./pkg-sync.sh pkg-config.json
-```
-
-**Theme not applying:**
-```bash
-# Check if theme directory exists
-ls themes/
-# Verify theme files
-ls themes/your-theme/
-```
-
-### Dependencies
-
-Required tools:
-- **GNU Stow**: Configuration management
-- **jq**: JSON processing
-- **Homebrew**: Package management
-- **mas**: Mac App Store CLI
-
-## 📝 License
-
-MIT License - feel free to fork and customize for your own needs.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Add your configurations/themes
-4. Submit a pull request
+FormalConf supports [Omarchy themes](https://learn.omacom.io/2/the-omarchy-manual/52/themes). Place themes in `~/.config/formalconf/themes/` following the Omarchy theme structure.
 
 ---
 
-*Built with ❤️ for macOS power users who love automation and consistency.*
+## Development
+
+### Commands
+
+```bash
+bun run formalconf        # Launch interactive TUI
+bun run config <cmd>      # Config management (stow, unstow, status, list, stow-all, unstow-all)
+bun run pkg-sync          # Sync packages from pkg-config.json
+bun run pkg-sync --purge  # Sync and remove unlisted packages
+bun run theme <name>      # Apply a theme
+bun run typecheck         # Run TypeScript type checking
+```
+
+### Project Structure
+
+```
+src/
+├── cli/              # Entry points (run directly with bun)
+│   ├── formalconf.tsx    # Main TUI app
+│   ├── config-manager.ts # Stow operations
+│   ├── pkg-sync.ts       # Homebrew/MAS sync
+│   └── set-theme.ts      # Theme switching
+├── components/       # Ink React components
+│   ├── layout/           # Layout primitives (Panel, Breadcrumb, Footer)
+│   └── ui/               # UI elements (StatusIndicator, Divider)
+├── hooks/            # React hooks (useTerminalSize, useSystemStatus)
+├── lib/              # Shared utilities
+│   ├── paths.ts          # Path constants (CONFIG_DIR, THEMES_DIR)
+│   ├── shell.ts          # Command execution helpers
+│   ├── config.ts         # Config loading
+│   └── theme.ts          # Theme colors
+└── types/            # TypeScript type definitions
+```
+
+---
+
+## Architecture
+
+FormalConf combines three systems into a unified TUI:
+
+1. **Configuration Manager** - Wraps GNU Stow for symlink-based dotfile management
+2. **Package Sync** - Orchestrates Homebrew and Mac App Store package synchronization
+3. **Theme Switcher** - Manages Omarchy-compatible themes via symlinks
+
+### Key Concepts
+
+- **Stow Packages** - Each config directory mirrors your home directory structure
+- **Session Isolation** - Package configs are separate from dotfile configs
+- **Theme Metadata** - Themes include author, description, and color information
+- **Lockfiles** - Enable reproducible package installations across machines
+
+---
+
+## Tech Stack
+
+<div align="center">
+
+| Category | Technologies |
+|----------|-------------|
+| **Runtime** | Bun |
+| **UI Framework** | Ink, React |
+| **Language** | TypeScript |
+| **Config Management** | GNU Stow |
+| **Package Management** | Homebrew, mas |
+| **Theme Format** | Omarchy-compatible |
+
+</div>
+
+---
+
+## Contributing
+
+Contributions are welcome! Here's how you can help:
+
+1. **Fork the repository**
+2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
+3. **Commit your changes** (`git commit -m 'Add amazing feature'`)
+4. **Push to the branch** (`git push origin feature/amazing-feature`)
+5. **Open a Pull Request**
+
+### Development Guidelines
+
+- Run `bun run typecheck` before committing
+- Keep commits focused and descriptive
+- Follow existing code patterns
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgments
+
+- Symlink management powered by [GNU Stow](https://www.gnu.org/software/stow/)
+- Terminal UI built with [Ink](https://github.com/vadimdemedes/ink)
+- Theme format compatible with [Omarchy](https://learn.omacom.io/2/the-omarchy-manual/52/themes)
+
+---
+
+<div align="center">
+
+**Made with ❤️ by [formalsnake.dev](https://formalsnake.dev)**
+
+⭐ Star this repo if you find it useful!
+
+</div>
