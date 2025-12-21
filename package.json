@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./dist/formalconf.js",
   "bin": {
-    "formalconf": "./dist/formalconf.js"
+    "formalconf": "dist/formalconf.js"
   },
   "files": [
     "dist"
@@ -37,7 +37,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/FormalSnake/formalconf"
+    "url": "git+https://github.com/FormalSnake/formalconf.git"
   },
   "dependencies": {
     "ink": "^5.0.1",
