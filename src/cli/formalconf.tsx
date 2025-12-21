@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { render, Box, Text, useApp } from "ink";
+import { render, Box, Text, useApp, useInput } from "ink";
 import { Select, Spinner } from "@inkjs/ui";
 import { readdirSync, existsSync } from "fs";
 import { Header } from "../components/Header";
@@ -43,6 +43,12 @@ function ConfigMenu({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<MenuState>("menu");
   const [output, setOutput] = useState("");
   const [success, setSuccess] = useState(true);
+
+  useInput((_, key) => {
+    if (state === "menu" && (key.backspace || key.leftArrow)) {
+      onBack();
+    }
+  });
 
   const handleAction = async (action: string) => {
     if (action === "back") {
@@ -98,6 +104,12 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<MenuState>("menu");
   const [output, setOutput] = useState("");
   const [success, setSuccess] = useState(true);
+
+  useInput((_, key) => {
+    if (state === "menu" && (key.backspace || key.leftArrow)) {
+      onBack();
+    }
+  });
 
   const handleAction = async (action: string) => {
     if (action === "back") {
@@ -172,6 +184,12 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<MenuState>("menu");
   const [output, setOutput] = useState("");
   const [success, setSuccess] = useState(true);
+
+  useInput((_, key) => {
+    if (state === "menu" && !loading && (key.backspace || key.leftArrow)) {
+      onBack();
+    }
+  });
 
   useEffect(() => {
     if (!existsSync(THEMES_DIR)) {
