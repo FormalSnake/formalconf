@@ -3,8 +3,11 @@ import { render, Box, Text, useApp } from "ink";
 import { Select, Spinner } from "@inkjs/ui";
 import { readdirSync, existsSync } from "fs";
 import { Header } from "../components/Header";
+import { CommandOutput } from "../components/CommandOutput";
 import { THEMES_DIR, ensureConfigDir } from "../lib/paths";
-import { exec, execLive } from "../lib/shell";
+import { exec } from "../lib/shell";
+
+type MenuState = "menu" | "running" | "result";
 
 type Screen = "main" | "config" | "packages" | "themes";
 
@@ -37,9 +40,9 @@ function MainMenu({ onSelect }: { onSelect: (screen: Screen) => void }) {
 }
 
 function ConfigMenu({ onBack }: { onBack: () => void }) {
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const { exit } = useApp();
+  const [state, setState] = useState<MenuState>("menu");
+  const [output, setOutput] = useState("");
+  const [success, setSuccess] = useState(true);
 
   const handleAction = async (action: string) => {
     if (action === "back") {
@@ -47,24 +50,26 @@ function ConfigMenu({ onBack }: { onBack: () => void }) {
       return;
     }
 
-    setLoading(true);
-    setMessage("");
-
-    // Exit ink temporarily to run the command with live output
-    exit();
-
+    setState("running");
     const scriptPath = `${import.meta.dir}/config-manager.ts`;
-    await execLive(["bun", "run", scriptPath, action]);
-
-    // Re-render after command completes
-    prompt("\nPress Enter to continue...");
-
-    // Restart the app
-    renderApp();
+    const result = await exec(["bun", "run", scriptPath, action]);
+    setOutput(result.stdout || result.stderr);
+    setSuccess(result.success);
+    setState("result");
   };
 
-  if (loading) {
+  if (state === "running") {
     return <Spinner label="Processing..." />;
+  }
+
+  if (state === "result") {
+    return (
+      <Box flexDirection="column">
+        <Text bold color="blue">Config Manager</Text>
+        <Text color="cyan">{"━".repeat(38)}</Text>
+        <CommandOutput output={output} success={success} onDismiss={() => setState("menu")} />
+      </Box>
+    );
   }
 
   return (
@@ -73,11 +78,6 @@ function ConfigMenu({ onBack }: { onBack: () => void }) {
         Config Manager
       </Text>
       <Text color="cyan">{"━".repeat(38)}</Text>
-      {message && (
-        <Text color="green" wrap="wrap">
-          {message}
-        </Text>
-      )}
       <Box marginTop={1}>
         <Select
           options={[
@@ -95,7 +95,9 @@ function ConfigMenu({ onBack }: { onBack: () => void }) {
 }
 
 function PackageMenu({ onBack }: { onBack: () => void }) {
-  const { exit } = useApp();
+  const [state, setState] = useState<MenuState>("menu");
+  const [output, setOutput] = useState("");
+  const [success, setSuccess] = useState(true);
 
   const handleAction = async (action: string) => {
     if (action === "back") {
@@ -103,7 +105,7 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
       return;
     }
 
-    exit();
+    setState("running");
 
     const scriptPath = `${import.meta.dir}/pkg-sync.ts`;
     let args: string[] = ["bun", "run", scriptPath];
@@ -122,12 +124,25 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
         break;
     }
 
-    await execLive(args);
-
-    prompt("\nPress Enter to continue...");
-
-    renderApp();
+    const result = await exec(args);
+    setOutput(result.stdout || result.stderr);
+    setSuccess(result.success);
+    setState("result");
   };
+
+  if (state === "running") {
+    return <Spinner label="Syncing packages..." />;
+  }
+
+  if (state === "result") {
+    return (
+      <Box flexDirection="column">
+        <Text bold color="blue">Package Sync</Text>
+        <Text color="cyan">{"━".repeat(38)}</Text>
+        <CommandOutput output={output} success={success} onDismiss={() => setState("menu")} />
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column">
@@ -154,7 +169,9 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
 function ThemeMenu({ onBack }: { onBack: () => void }) {
   const [themes, setThemes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const { exit } = useApp();
+  const [state, setState] = useState<MenuState>("menu");
+  const [output, setOutput] = useState("");
+  const [success, setSuccess] = useState(true);
 
   useEffect(() => {
     if (!existsSync(THEMES_DIR)) {
@@ -176,18 +193,26 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
       return;
     }
 
-    exit();
-
+    setState("running");
     const scriptPath = `${import.meta.dir}/set-theme.ts`;
-    await execLive(["bun", "run", scriptPath, value]);
-
-    prompt("\nPress Enter to continue...");
-
-    renderApp();
+    const result = await exec(["bun", "run", scriptPath, value]);
+    setOutput(result.stdout || result.stderr);
+    setSuccess(result.success);
+    setState("result");
   };
 
-  if (loading) {
-    return <Spinner label="Loading themes..." />;
+  if (loading || state === "running") {
+    return <Spinner label={loading ? "Loading themes..." : "Applying theme..."} />;
+  }
+
+  if (state === "result") {
+    return (
+      <Box flexDirection="column">
+        <Text bold color="blue">Select Theme</Text>
+        <Text color="cyan">{"━".repeat(38)}</Text>
+        <CommandOutput output={output} success={success} onDismiss={() => setState("menu")} />
+      </Box>
+    );
   }
 
   if (themes.length === 0) {
@@ -250,8 +275,4 @@ function App() {
   );
 }
 
-function renderApp() {
-  render(<App />);
-}
-
-renderApp();
+render(<App />);
