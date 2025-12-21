@@ -1,28 +1,39 @@
 import React from "react";
 import { Box, Text, useInput } from "ink";
+import { Panel } from "./layout/Panel";
+import { colors } from "../lib/theme";
 
 interface CommandOutputProps {
+  title?: string;
   output: string;
   success?: boolean;
   onDismiss: () => void;
 }
 
-export function CommandOutput({ output, success = true, onDismiss }: CommandOutputProps) {
+export function CommandOutput({
+  title,
+  output,
+  success = true,
+  onDismiss,
+}: CommandOutputProps) {
   useInput(() => {
     onDismiss();
   });
 
   return (
-    <Box flexDirection="column" marginTop={1}>
+    <Panel
+      title={title}
+      borderColor={success ? colors.success : colors.error}
+    >
       {output && (
         <Box flexDirection="column" marginBottom={1}>
           <Text>{output}</Text>
         </Box>
       )}
-      <Text color={success ? "green" : "red"}>
-        {success ? "✓ Done" : "✗ Failed"}
+      <Text color={success ? colors.success : colors.error}>
+        {success ? "Done" : "Failed"}
       </Text>
       <Text dimColor>Press any key to continue...</Text>
-    </Box>
+    </Panel>
   );
 }

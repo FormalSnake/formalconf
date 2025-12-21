@@ -1,6 +1,6 @@
 import React from "react";
-import { Box, Text } from "ink";
 import { Select } from "@inkjs/ui";
+import { Panel } from "./layout/Panel";
 
 interface MenuOption {
   label: string;
@@ -15,14 +15,8 @@ interface MenuProps {
 
 export function Menu({ title, options, onSelect }: MenuProps) {
   return (
-    <Box flexDirection="column">
-      <Text bold color="blue">
-        {title}
-      </Text>
-      <Text color="cyan">{"━".repeat(38)}</Text>
-      <Box marginTop={1}>
-        <Select options={options} onChange={onSelect} />
-      </Box>
-    </Box>
+    <Panel title={title}>
+      <Select options={options} onChange={onSelect} />
+    </Panel>
   );
 }

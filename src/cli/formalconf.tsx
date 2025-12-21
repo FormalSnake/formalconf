@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import { render, Box, Text, useApp, useInput } from "ink";
 import { Select, Spinner } from "@inkjs/ui";
 import { readdirSync, existsSync } from "fs";
-import { Header } from "../components/Header";
+import { Layout } from "../components/layout/Layout";
+import { Panel } from "../components/layout/Panel";
 import { CommandOutput } from "../components/CommandOutput";
 import { THEMES_DIR, ensureConfigDir } from "../lib/paths";
 import { exec } from "../lib/shell";
+import { colors } from "../lib/theme";
 
 type MenuState = "menu" | "running" | "result";
 
@@ -15,27 +17,23 @@ function MainMenu({ onSelect }: { onSelect: (screen: Screen) => void }) {
   const { exit } = useApp();
 
   return (
-    <Box flexDirection="column">
-      <Text bold>Main Menu</Text>
-      <Text color="cyan">{"━".repeat(38)}</Text>
-      <Box marginTop={1}>
-        <Select
-          options={[
-            { label: "Config Manager", value: "config" },
-            { label: "Package Sync", value: "packages" },
-            { label: "Set Theme", value: "themes" },
-            { label: "Exit", value: "exit" },
-          ]}
-          onChange={(value) => {
-            if (value === "exit") {
-              exit();
-              return;
-            }
-            onSelect(value as Screen);
-          }}
-        />
-      </Box>
-    </Box>
+    <Panel title="Main Menu">
+      <Select
+        options={[
+          { label: "Config Manager", value: "config" },
+          { label: "Package Sync", value: "packages" },
+          { label: "Set Theme", value: "themes" },
+          { label: "Exit", value: "exit" },
+        ]}
+        onChange={(value) => {
+          if (value === "exit") {
+            exit();
+            return;
+          }
+          onSelect(value as Screen);
+        }}
+      />
+    </Panel>
   );
 }
 
@@ -65,38 +63,37 @@ function ConfigMenu({ onBack }: { onBack: () => void }) {
   };
 
   if (state === "running") {
-    return <Spinner label="Processing..." />;
+    return (
+      <Panel title="Config Manager">
+        <Spinner label="Processing..." />
+      </Panel>
+    );
   }
 
   if (state === "result") {
     return (
-      <Box flexDirection="column">
-        <Text bold color="blue">Config Manager</Text>
-        <Text color="cyan">{"━".repeat(38)}</Text>
-        <CommandOutput output={output} success={success} onDismiss={() => setState("menu")} />
-      </Box>
+      <CommandOutput
+        title="Config Manager"
+        output={output}
+        success={success}
+        onDismiss={() => setState("menu")}
+      />
     );
   }
 
   return (
-    <Box flexDirection="column">
-      <Text bold color="blue">
-        Config Manager
-      </Text>
-      <Text color="cyan">{"━".repeat(38)}</Text>
-      <Box marginTop={1}>
-        <Select
-          options={[
-            { label: "Stow all packages", value: "stow-all" },
-            { label: "Unstow all packages", value: "unstow-all" },
-            { label: "Check status", value: "status" },
-            { label: "List packages", value: "list" },
-            { label: "Back", value: "back" },
-          ]}
-          onChange={handleAction}
-        />
-      </Box>
-    </Box>
+    <Panel title="Config Manager">
+      <Select
+        options={[
+          { label: "Stow all packages", value: "stow-all" },
+          { label: "Unstow all packages", value: "unstow-all" },
+          { label: "Check status", value: "status" },
+          { label: "List packages", value: "list" },
+          { label: "Back", value: "back" },
+        ]}
+        onChange={handleAction}
+      />
+    </Panel>
   );
 }
 
@@ -143,38 +140,37 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
   };
 
   if (state === "running") {
-    return <Spinner label="Syncing packages..." />;
+    return (
+      <Panel title="Package Sync">
+        <Spinner label="Syncing packages..." />
+      </Panel>
+    );
   }
 
   if (state === "result") {
     return (
-      <Box flexDirection="column">
-        <Text bold color="blue">Package Sync</Text>
-        <Text color="cyan">{"━".repeat(38)}</Text>
-        <CommandOutput output={output} success={success} onDismiss={() => setState("menu")} />
-      </Box>
+      <CommandOutput
+        title="Package Sync"
+        output={output}
+        success={success}
+        onDismiss={() => setState("menu")}
+      />
     );
   }
 
   return (
-    <Box flexDirection="column">
-      <Text bold color="blue">
-        Package Sync
-      </Text>
-      <Text color="cyan">{"━".repeat(38)}</Text>
-      <Box marginTop={1}>
-        <Select
-          options={[
-            { label: "Sync packages", value: "sync" },
-            { label: "Sync with purge", value: "sync-purge" },
-            { label: "Upgrade all (with verification)", value: "upgrade" },
-            { label: "Upgrade interactive", value: "upgrade-interactive" },
-            { label: "Back", value: "back" },
-          ]}
-          onChange={handleAction}
-        />
-      </Box>
-    </Box>
+    <Panel title="Package Sync">
+      <Select
+        options={[
+          { label: "Sync packages", value: "sync" },
+          { label: "Sync with purge", value: "sync-purge" },
+          { label: "Upgrade all (with verification)", value: "upgrade" },
+          { label: "Upgrade interactive", value: "upgrade-interactive" },
+          { label: "Back", value: "back" },
+        ]}
+        onChange={handleAction}
+      />
+    </Panel>
   );
 }
 
@@ -198,9 +194,7 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
       return;
     }
     const entries = readdirSync(THEMES_DIR, { withFileTypes: true });
-    const themeNames = entries
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name);
+    const themeNames = entries.filter((e) => e.isDirectory()).map((e) => e.name);
     setThemes(themeNames);
     setLoading(false);
   }, []);
@@ -220,28 +214,29 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
   };
 
   if (loading || state === "running") {
-    return <Spinner label={loading ? "Loading themes..." : "Applying theme..."} />;
+    return (
+      <Panel title="Select Theme">
+        <Spinner label={loading ? "Loading themes..." : "Applying theme..."} />
+      </Panel>
+    );
   }
 
   if (state === "result") {
     return (
-      <Box flexDirection="column">
-        <Text bold color="blue">Select Theme</Text>
-        <Text color="cyan">{"━".repeat(38)}</Text>
-        <CommandOutput output={output} success={success} onDismiss={() => setState("menu")} />
-      </Box>
+      <CommandOutput
+        title="Select Theme"
+        output={output}
+        success={success}
+        onDismiss={() => setState("menu")}
+      />
     );
   }
 
   if (themes.length === 0) {
     return (
-      <Box flexDirection="column">
-        <Text bold color="blue">
-          Select Theme
-        </Text>
-        <Text color="cyan">{"━".repeat(38)}</Text>
-        <Box marginTop={1} flexDirection="column">
-          <Text color="yellow">No themes available.</Text>
+      <Panel title="Select Theme">
+        <Box flexDirection="column">
+          <Text color={colors.warning}>No themes available.</Text>
           <Text>This system is compatible with omarchy themes.</Text>
           <Text dimColor>Add themes to ~/.config/formalconf/themes/</Text>
         </Box>
@@ -251,7 +246,7 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
             onChange={() => onBack()}
           />
         </Box>
-      </Box>
+      </Panel>
     );
   }
 
@@ -261,15 +256,9 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
   ];
 
   return (
-    <Box flexDirection="column">
-      <Text bold color="blue">
-        Select Theme
-      </Text>
-      <Text color="cyan">{"━".repeat(38)}</Text>
-      <Box marginTop={1}>
-        <Select options={options} onChange={handleSelect} />
-      </Box>
-    </Box>
+    <Panel title="Select Theme">
+      <Select options={options} onChange={handleSelect} />
+    </Panel>
   );
 }
 
@@ -280,16 +269,26 @@ function App() {
     ensureConfigDir();
   }, []);
 
+  const getBreadcrumb = (): string[] => {
+    switch (screen) {
+      case "config":
+        return ["Main", "Config Manager"];
+      case "packages":
+        return ["Main", "Package Sync"];
+      case "themes":
+        return ["Main", "Themes"];
+      default:
+        return ["Main"];
+    }
+  };
+
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header />
+    <Layout breadcrumb={getBreadcrumb()}>
       {screen === "main" && <MainMenu onSelect={setScreen} />}
       {screen === "config" && <ConfigMenu onBack={() => setScreen("main")} />}
-      {screen === "packages" && (
-        <PackageMenu onBack={() => setScreen("main")} />
-      )}
+      {screen === "packages" && <PackageMenu onBack={() => setScreen("main")} />}
       {screen === "themes" && <ThemeMenu onBack={() => setScreen("main")} />}
-    </Box>
+    </Layout>
   );
 }
 
