@@ -3,12 +3,16 @@ import { render, Box, Text, useApp, useInput } from "ink";
 import { Spinner } from "@inkjs/ui";
 import { VimSelect } from "../components/ui/VimSelect";
 import { readdirSync, existsSync } from "fs";
+import { join } from "path";
 import { Layout } from "../components/layout/Layout";
 import { Panel } from "../components/layout/Panel";
 import { CommandOutput } from "../components/CommandOutput";
+import { ThemeCard } from "../components/ThemeCard";
 import { THEMES_DIR, ensureConfigDir } from "../lib/paths";
+import { parseTheme } from "../lib/theme-parser";
 import { exec } from "../lib/shell";
 import { colors } from "../lib/theme";
+import type { Theme } from "../types/theme";
 
 type MenuState = "menu" | "running" | "result";
 
@@ -176,39 +180,62 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
 }
 
 function ThemeMenu({ onBack }: { onBack: () => void }) {
-  const [themes, setThemes] = useState<string[]>([]);
+  const [themes, setThemes] = useState<Theme[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [state, setState] = useState<MenuState>("menu");
   const [output, setOutput] = useState("");
   const [success, setSuccess] = useState(true);
 
   useInput((input, key) => {
-    if (state === "menu" && !loading && (key.escape || key.leftArrow || input === "h")) {
+    if (state !== "menu" || loading) return;
+
+    if (key.escape || key.leftArrow || input === "h") {
       onBack();
+      return;
+    }
+
+    if ((key.downArrow || input === "j") && selectedIndex < themes.length - 1) {
+      setSelectedIndex((i) => i + 1);
+    }
+    if ((key.upArrow || input === "k") && selectedIndex > 0) {
+      setSelectedIndex((i) => i - 1);
+    }
+    if (key.return || input === "l") {
+      applyTheme(themes[selectedIndex]);
     }
   });
 
   useEffect(() => {
-    if (!existsSync(THEMES_DIR)) {
-      setThemes([]);
+    async function loadThemes() {
+      if (!existsSync(THEMES_DIR)) {
+        setThemes([]);
+        setLoading(false);
+        return;
+      }
+
+      const entries = readdirSync(THEMES_DIR, { withFileTypes: true });
+      const loadedThemes: Theme[] = [];
+
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const themePath = join(THEMES_DIR, entry.name);
+          const theme = await parseTheme(themePath, entry.name);
+          loadedThemes.push(theme);
+        }
+      }
+
+      setThemes(loadedThemes);
       setLoading(false);
-      return;
     }
-    const entries = readdirSync(THEMES_DIR, { withFileTypes: true });
-    const themeNames = entries.filter((e) => e.isDirectory()).map((e) => e.name);
-    setThemes(themeNames);
-    setLoading(false);
+
+    loadThemes();
   }, []);
 
-  const handleSelect = async (value: string) => {
-    if (value === "back") {
-      onBack();
-      return;
-    }
-
+  const applyTheme = async (theme: Theme) => {
     setState("running");
     const scriptPath = `${import.meta.dir}/set-theme.ts`;
-    const result = await exec(["bun", "run", scriptPath, value]);
+    const result = await exec(["bun", "run", scriptPath, theme.path.split("/").pop()!]);
     setOutput(result.stdout || result.stderr);
     setSuccess(result.success);
     setState("result");
@@ -251,14 +278,20 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
     );
   }
 
-  const options = [
-    ...themes.map((t) => ({ label: t, value: t })),
-    { label: "Back", value: "back" },
-  ];
-
   return (
     <Panel title="Select Theme">
-      <VimSelect options={options} onChange={handleSelect} />
+      <Box flexDirection="column" gap={1}>
+        {themes.map((theme, index) => (
+          <ThemeCard
+            key={theme.path}
+            theme={theme}
+            isSelected={index === selectedIndex}
+          />
+        ))}
+      </Box>
+      <Box marginTop={1}>
+        <Text dimColor>↑↓/jk navigate • Enter/l select • Esc/h back</Text>
+      </Box>
     </Panel>
   );
 }

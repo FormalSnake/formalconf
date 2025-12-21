@@ -4,6 +4,7 @@ import { join, dirname } from "path";
 export const HOME_DIR = homedir();
 export const CONFIG_DIR = join(HOME_DIR, ".config", "formalconf");
 export const THEME_TARGET_DIR = join(CONFIG_DIR, "current", "theme");
+export const BACKGROUNDS_TARGET_DIR = join(CONFIG_DIR, "current", "backgrounds");
 
 const scriptPath = import.meta.dir;
 export const SRC_DIR = scriptPath;
@@ -21,4 +22,5 @@ export async function ensureConfigDir(): Promise<void> {
   await ensureDir(CONFIGS_DIR);
   await ensureDir(THEMES_DIR);
   await ensureDir(THEME_TARGET_DIR);
+  await ensureDir(BACKGROUNDS_TARGET_DIR);
 }
