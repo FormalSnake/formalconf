@@ -276,3 +276,26 @@ export async function commandExists(cmd: string): Promise<boolean> {
   const result = await exec(["which", cmd]);
   return result.success;
 }
+
+// Prerequisite check result
+export interface PrerequisiteResult {
+  ok: boolean;
+  missing: { name: string; install: string }[];
+}
+
+// Check required prerequisites
+export async function checkPrerequisites(): Promise<PrerequisiteResult> {
+  const required = [
+    { name: "stow", install: "brew install stow" },
+    { name: "brew", install: "https://brew.sh" },
+  ];
+
+  const missing: { name: string; install: string }[] = [];
+  for (const dep of required) {
+    if (!(await commandExists(dep.name))) {
+      missing.push(dep);
+    }
+  }
+
+  return { ok: missing.length === 0, missing };
+}

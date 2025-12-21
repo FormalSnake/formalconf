@@ -12,6 +12,7 @@ import { ScrollableLog } from "../components/ScrollableLog";
 import { PromptInput } from "../components/PromptInput";
 import { useTerminalSize } from "../hooks/useTerminalSize";
 import { THEMES_DIR, ensureConfigDir } from "../lib/paths";
+import { checkPrerequisites } from "../lib/runtime";
 import { parseTheme } from "../lib/theme-parser";
 import { colors } from "../lib/theme";
 import { runConfigManager } from "./config-manager";
@@ -454,7 +455,40 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
   );
 }
 
+type AppState = "loading" | "error" | "ready";
+
+function PrerequisiteError({
+  missing,
+  onExit,
+}: {
+  missing: { name: string; install: string }[];
+  onExit: () => void;
+}) {
+  useInput(() => onExit());
+
+  return (
+    <Layout breadcrumb={["Error"]}>
+      <Panel title="Missing Prerequisites" borderColor={colors.error}>
+        <Text color={colors.error}>Required tools are not installed:</Text>
+        <Box flexDirection="column" marginTop={1}>
+          {missing.map((dep) => (
+            <Box key={dep.name}>
+              <Text color={colors.warning}>• {dep.name}</Text>
+              <Text dimColor> — Install: {dep.install}</Text>
+            </Box>
+          ))}
+        </Box>
+        <Box marginTop={1}>
+          <Text dimColor>Press any key to exit...</Text>
+        </Box>
+      </Panel>
+    </Layout>
+  );
+}
+
 function App() {
+  const [appState, setAppState] = useState<AppState>("loading");
+  const [missingDeps, setMissingDeps] = useState<{ name: string; install: string }[]>([]);
   const [screen, setScreen] = useState<Screen>("main");
   const { exit } = useApp();
 
@@ -465,7 +499,17 @@ function App() {
   });
 
   useEffect(() => {
-    ensureConfigDir();
+    async function init() {
+      ensureConfigDir();
+      const result = await checkPrerequisites();
+      if (!result.ok) {
+        setMissingDeps(result.missing);
+        setAppState("error");
+      } else {
+        setAppState("ready");
+      }
+    }
+    init();
   }, []);
 
   const getBreadcrumb = (): string[] => {
@@ -480,6 +524,20 @@ function App() {
         return ["Main"];
     }
   };
+
+  if (appState === "loading") {
+    return (
+      <Layout breadcrumb={["Loading"]}>
+        <Panel title="FormalConf">
+          <Spinner label="Checking prerequisites..." />
+        </Panel>
+      </Layout>
+    );
+  }
+
+  if (appState === "error") {
+    return <PrerequisiteError missing={missingDeps} onExit={exit} />;
+  }
 
   return (
     <Layout breadcrumb={getBreadcrumb()}>
