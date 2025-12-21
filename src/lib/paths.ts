@@ -1,5 +1,6 @@
 import { homedir } from "os";
 import { join } from "path";
+import { readdir } from "fs/promises";
 import { getScriptDir, ensureDir as runtimeEnsureDir } from "./runtime";
 
 export const HOME_DIR = homedir();
@@ -25,4 +26,19 @@ export async function ensureConfigDir(): Promise<void> {
   await ensureDir(THEMES_DIR);
   await ensureDir(THEME_TARGET_DIR);
   await ensureDir(BACKGROUNDS_TARGET_DIR);
+}
+
+async function dirHasContents(path: string): Promise<boolean> {
+  try {
+    const entries = await readdir(path);
+    return entries.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function isFirstRun(): Promise<boolean> {
+  const configsExist = await dirHasContents(CONFIGS_DIR);
+  const themesExist = await dirHasContents(THEMES_DIR);
+  return !configsExist && !themesExist;
 }
