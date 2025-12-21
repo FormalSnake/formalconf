@@ -24,7 +24,6 @@ export function ThemeCard({ theme, isSelected, width }: ThemeCardProps) {
     <Box
       flexDirection="column"
       width={width}
-      height={5}
       borderStyle={borderStyles.panel}
       borderColor={borderColor}
       paddingX={1}
@@ -39,15 +38,16 @@ export function ThemeCard({ theme, isSelected, width }: ThemeCardProps) {
         <Text color={colors.primaryDim}>{indicatorText}</Text>
       </Box>
 
-      <Text dimColor wrap="truncate">
-        {theme.metadata?.author ? `by ${theme.metadata.author}` : ""}
-      </Text>
-
-      <Text wrap="truncate" color={colors.text}>
-        {theme.metadata?.description
-          ? theme.metadata.description.slice(0, innerWidth)
-          : ""}
-      </Text>
+      {theme.metadata?.author && (
+        <Text dimColor wrap="truncate">
+          by {theme.metadata.author}
+        </Text>
+      )}
+      {theme.metadata?.description && (
+        <Text wrap="truncate" color={colors.text}>
+          {theme.metadata.description.slice(0, innerWidth)}
+        </Text>
+      )}
     </Box>
   );
 }

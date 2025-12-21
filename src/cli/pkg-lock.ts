@@ -105,9 +105,52 @@ async function showLockfile(): Promise<void> {
   }
 }
 
+export interface PkgLockResult {
+  output: string;
+  success: boolean;
+}
+
+export async function runPkgLock(args: string[]): Promise<PkgLockResult> {
+  const { positionals } = parseArgs({
+    args,
+    options: {
+      help: { type: "boolean", short: "h", default: false },
+    },
+    allowPositionals: true,
+  });
+
+  const command = positionals[0] || "update";
+
+  switch (command) {
+    case "update": {
+      const lock = await updateLockfile();
+      const total =
+        Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
+      return { output: `Lockfile updated with ${total} packages`, success: true };
+    }
+    case "status": {
+      const lock = await loadPkgLock();
+      if (!lock) {
+        return { output: "No lockfile found", success: false };
+      }
+      const changes = await getChangedPackages();
+      if (changes.added.length === 0 && changes.removed.length === 0 && changes.upgraded.length === 0) {
+        return { output: `Lockfile is up to date (last: ${lock.lastUpdated})`, success: true };
+      }
+      let output = "Changes:\n";
+      if (changes.added.length > 0) output += `Added: ${changes.added.join(", ")}\n`;
+      if (changes.removed.length > 0) output += `Removed: ${changes.removed.join(", ")}\n`;
+      if (changes.upgraded.length > 0) output += `Upgraded: ${changes.upgraded.map(u => u.name).join(", ")}`;
+      return { output, success: true };
+    }
+    default:
+      return { output: `Unknown command: ${command}`, success: false };
+  }
+}
+
 async function main() {
   const { values, positionals } = parseArgs({
-    args: Bun.argv.slice(2),
+    args: process.argv.slice(2),
     options: {
       help: { type: "boolean", short: "h", default: false },
     },
@@ -156,4 +199,8 @@ async function main() {
   }
 }
 
-main().catch(console.error);
+// Only run main when executed directly
+const isMainModule = process.argv[1]?.includes("pkg-lock");
+if (isMainModule) {
+  main().catch(console.error);
+}

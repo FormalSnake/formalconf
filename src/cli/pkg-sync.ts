@@ -417,9 +417,55 @@ Examples:
 `);
 }
 
+export interface PkgSyncResult {
+  output: string;
+  success: boolean;
+}
+
+export async function runPkgSync(args: string[]): Promise<PkgSyncResult> {
+  const { values, positionals } = parseArgs({
+    args,
+    options: {
+      "upgrade-only": { type: "boolean", default: false },
+      "upgrade-interactive": { type: "boolean", default: false },
+      purge: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
+    },
+    allowPositionals: true,
+  });
+
+  try {
+    await checkDependencies();
+  } catch {
+    return { output: "Homebrew not installed", success: false };
+  }
+
+  if (values["upgrade-only"]) {
+    const result = await upgradeWithVerification();
+    let output = "Upgrade complete\n";
+    if (result.succeeded.length > 0) {
+      output += `Upgraded: ${result.succeeded.join(", ")}\n`;
+    }
+    if (result.failed.length > 0) {
+      output += `Failed: ${result.failed.join(", ")}`;
+    }
+    return { output, success: result.failed.length === 0 };
+  }
+
+  const configPath = positionals[0];
+  const config = await loadPkgConfig(configPath);
+
+  if (values.purge) {
+    config.config.purge = true;
+  }
+
+  await syncPackages(config);
+  return { output: "Sync complete", success: true };
+}
+
 async function main() {
   const { values, positionals } = parseArgs({
-    args: Bun.argv.slice(2),
+    args: process.argv.slice(2),
     options: {
       "upgrade-only": { type: "boolean", default: false },
       "upgrade-interactive": { type: "boolean", default: false },
@@ -483,4 +529,8 @@ async function main() {
   await syncPackages(config);
 }
 
-main().catch(console.error);
+// Only run main when executed directly
+const isMainModule = process.argv[1]?.includes("pkg-sync");
+if (isMainModule) {
+  main().catch(console.error);
+}

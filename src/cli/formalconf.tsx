@@ -11,8 +11,11 @@ import { ThemeCard } from "../components/ThemeCard";
 import { useTerminalSize } from "../hooks/useTerminalSize";
 import { THEMES_DIR, ensureConfigDir } from "../lib/paths";
 import { parseTheme } from "../lib/theme-parser";
-import { exec } from "../lib/shell";
 import { colors } from "../lib/theme";
+import { runConfigManager } from "./config-manager";
+import { runPkgSync } from "./pkg-sync";
+import { runPkgLock } from "./pkg-lock";
+import { runSetTheme } from "./set-theme";
 import type { Theme } from "../types/theme";
 
 type MenuState = "menu" | "running" | "result";
@@ -61,9 +64,8 @@ function ConfigMenu({ onBack }: { onBack: () => void }) {
     }
 
     setState("running");
-    const scriptPath = `${import.meta.dir}/config-manager.ts`;
-    const result = await exec(["bun", "run", scriptPath, action]);
-    setOutput(result.stdout || result.stderr);
+    const result = await runConfigManager([action]);
+    setOutput(result.output);
     setSuccess(result.success);
     setState("result");
   };
@@ -122,31 +124,32 @@ function PackageMenu({ onBack }: { onBack: () => void }) {
 
     setState("running");
 
-    const scriptPath = `${import.meta.dir}/pkg-sync.ts`;
-    let args: string[] = ["bun", "run", scriptPath];
+    let result: { output: string; success: boolean };
 
     switch (action) {
       case "sync":
+        result = await runPkgSync([]);
         break;
       case "sync-purge":
-        args.push("--purge");
+        result = await runPkgSync(["--purge"]);
         break;
       case "upgrade":
-        args.push("--upgrade-only");
+        result = await runPkgSync(["--upgrade-only"]);
         break;
       case "upgrade-interactive":
-        args.push("--upgrade-interactive");
+        result = await runPkgSync(["--upgrade-interactive"]);
         break;
       case "lock-update":
-        args = ["bun", "run", `${import.meta.dir}/pkg-lock.ts`, "update"];
+        result = await runPkgLock(["update"]);
         break;
       case "lock-status":
-        args = ["bun", "run", `${import.meta.dir}/pkg-lock.ts`, "status"];
+        result = await runPkgLock(["status"]);
         break;
+      default:
+        result = { output: "Unknown action", success: false };
     }
 
-    const result = await exec(args);
-    setOutput(result.stdout || result.stderr);
+    setOutput(result.output);
     setSuccess(result.success);
     setState("result");
   };
@@ -299,9 +302,9 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
 
   const applyTheme = async (theme: Theme) => {
     setState("running");
-    const scriptPath = `${import.meta.dir}/set-theme.ts`;
-    const result = await exec(["bun", "run", scriptPath, theme.path.split("/").pop()!]);
-    setOutput(result.stdout || result.stderr);
+    const themeName = theme.path.split("/").pop()!;
+    const result = await runSetTheme(themeName);
+    setOutput(result.output);
     setSuccess(result.success);
     setState("result");
   };

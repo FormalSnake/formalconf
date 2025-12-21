@@ -169,9 +169,110 @@ Commands:
 `);
 }
 
+export interface ConfigManagerResult {
+  output: string;
+  success: boolean;
+}
+
+export async function runConfigManager(args: string[]): Promise<ConfigManagerResult> {
+  const { positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+  });
+
+  try {
+    await checkStow();
+  } catch {
+    return { output: "GNU Stow is not installed", success: false };
+  }
+
+  const [command, packageName] = positionals;
+  let output = "";
+  let success = true;
+
+  switch (command) {
+    case "stow": {
+      if (!packageName) {
+        return { output: "Package name required", success: false };
+      }
+      const result = await stowPackage(packageName);
+      output = result.message;
+      success = result.success;
+      break;
+    }
+    case "unstow": {
+      if (!packageName) {
+        return { output: "Package name required", success: false };
+      }
+      const result = await unstowPackage(packageName);
+      output = result.message;
+      success = result.success;
+      break;
+    }
+    case "restow": {
+      if (!packageName) {
+        return { output: "Package name required", success: false };
+      }
+      const result = await restowPackage(packageName);
+      output = result.message;
+      success = result.success;
+      break;
+    }
+    case "adopt": {
+      if (!packageName) {
+        return { output: "Package name required", success: false };
+      }
+      const result = await adoptPackage(packageName);
+      output = result.message;
+      success = result.success;
+      break;
+    }
+    case "list": {
+      const packages = listPackages();
+      output = packages.map((p) => p.name).join("\n");
+      break;
+    }
+    case "status": {
+      const packages = listPackages();
+      output = packages
+        .map((p) => `${p.name}: ${p.isStowed ? "stowed" : "not stowed"}`)
+        .join("\n");
+      break;
+    }
+    case "stow-all": {
+      const packages = listPackages();
+      const results: string[] = [];
+      for (const pkg of packages) {
+        const result = await stowPackage(pkg.name);
+        results.push(`${result.success ? "✓" : "✗"} ${result.message}`);
+        if (!result.success) success = false;
+      }
+      output = results.join("\n");
+      break;
+    }
+    case "unstow-all": {
+      const packages = listPackages();
+      const results: string[] = [];
+      for (const pkg of packages) {
+        const result = await unstowPackage(pkg.name);
+        results.push(`${result.success ? "✓" : "✗"} ${result.message}`);
+        if (!result.success) success = false;
+      }
+      output = results.join("\n");
+      break;
+    }
+    default:
+      output = "Unknown command";
+      success = false;
+      break;
+  }
+
+  return { output, success };
+}
+
 async function main() {
   const { positionals } = parseArgs({
-    args: Bun.argv.slice(2),
+    args: process.argv.slice(2),
     allowPositionals: true,
   });
 
@@ -256,4 +357,8 @@ async function main() {
   }
 }
 
-main().catch(console.error);
+// Only run main when executed directly
+const isMainModule = process.argv[1]?.includes("config-manager");
+if (isMainModule) {
+  main().catch(console.error);
+}

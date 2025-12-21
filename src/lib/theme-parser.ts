@@ -1,5 +1,6 @@
 import { existsSync, readdirSync } from "fs";
 import { join } from "path";
+import { readText } from "./runtime";
 import type { Theme, ThemeMetadata, ThemeFile } from "../types/theme";
 
 function parseYaml(content: string): Record<string, unknown> {
@@ -44,7 +45,7 @@ export async function parseThemeMetadata(
   }
 
   try {
-    const content = await Bun.file(yamlPath).text();
+    const content = await readText(yamlPath);
     const parsed = parseYaml(content);
 
     return {

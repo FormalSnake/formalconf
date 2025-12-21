@@ -1,11 +1,12 @@
 import { parseArgs } from "util";
-import { readdirSync, existsSync } from "fs";
+import { readdirSync, existsSync, rmSync, symlinkSync, unlinkSync } from "fs";
 import { join } from "path";
 import {
   THEMES_DIR,
   THEME_TARGET_DIR,
   BACKGROUNDS_TARGET_DIR,
   ensureConfigDir,
+  ensureDir,
 } from "../lib/paths";
 import { parseTheme } from "../lib/theme-parser";
 import type { Theme } from "../types/theme";
@@ -41,23 +42,44 @@ async function listThemes(): Promise<Theme[]> {
   return themes;
 }
 
-async function applyTheme(themeName: string): Promise<void> {
+function clearDirectory(dir: string): void {
+  if (existsSync(dir)) {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      if (entry.isSymbolicLink() || entry.isFile()) {
+        unlinkSync(fullPath);
+      } else if (entry.isDirectory()) {
+        rmSync(fullPath, { recursive: true, force: true });
+      }
+    }
+  }
+}
+
+function createSymlink(source: string, target: string): void {
+  if (existsSync(target)) {
+    unlinkSync(target);
+  }
+  symlinkSync(source, target);
+}
+
+async function applyTheme(themeName: string): Promise<{ output: string; success: boolean }> {
   const themeDir = join(THEMES_DIR, themeName);
 
   if (!existsSync(themeDir)) {
-    console.error(
-      `${colors.red}Error: Theme '${themeName}' not found${colors.reset}`
-    );
-    process.exit(1);
+    return { output: `Theme '${themeName}' not found`, success: false };
   }
 
   await ensureConfigDir();
+  await ensureDir(THEME_TARGET_DIR);
 
   const theme = await parseTheme(themeDir, themeName);
 
   // Clear existing symlinks
-  await Bun.$`rm -rf ${THEME_TARGET_DIR}/*`.quiet();
-  await Bun.$`rm -rf ${BACKGROUNDS_TARGET_DIR}`.quiet();
+  clearDirectory(THEME_TARGET_DIR);
+  if (existsSync(BACKGROUNDS_TARGET_DIR)) {
+    rmSync(BACKGROUNDS_TARGET_DIR, { recursive: true, force: true });
+  }
 
   // Symlink all theme files (excluding directories, theme.yaml, and light.mode)
   const entries = readdirSync(themeDir, { withFileTypes: true });
@@ -71,35 +93,28 @@ async function applyTheme(themeName: string): Promise<void> {
       entry.name !== "light.mode"
     ) {
       const target = join(THEME_TARGET_DIR, entry.name);
-      await Bun.$`ln -sf ${source} ${target}`.quiet();
+      createSymlink(source, target);
     }
   }
 
   // Symlink backgrounds directory if present
   if (theme.hasBackgrounds) {
     const backgroundsSource = join(themeDir, "backgrounds");
-    await Bun.$`ln -sf ${backgroundsSource} ${BACKGROUNDS_TARGET_DIR}`.quiet();
+    createSymlink(backgroundsSource, BACKGROUNDS_TARGET_DIR);
   }
 
-  console.log(
-    `${colors.green}Theme '${theme.name}' applied successfully${colors.reset}`
-  );
-
+  let output = `Theme '${theme.name}' applied successfully`;
   if (theme.metadata?.author) {
-    console.log(`${colors.dim}Author: ${theme.metadata.author}${colors.reset}`);
+    output += `\nAuthor: ${theme.metadata.author}`;
   }
-
   if (theme.hasBackgrounds) {
-    console.log(
-      `${colors.cyan}Wallpapers available at: ~/.config/formalconf/current/backgrounds/${colors.reset}`
-    );
+    output += `\nWallpapers available at: ~/.config/formalconf/current/backgrounds/`;
+  }
+  if (theme.isLightMode) {
+    output += `\nNote: This is a light mode theme`;
   }
 
-  if (theme.isLightMode) {
-    console.log(
-      `${colors.yellow}Note: This is a light mode theme${colors.reset}`
-    );
-  }
+  return { output, success: true };
 }
 
 async function showThemeInfo(themeName: string): Promise<void> {
@@ -142,9 +157,20 @@ async function showThemeInfo(themeName: string): Promise<void> {
   }
 }
 
+export interface SetThemeResult {
+  output: string;
+  success: boolean;
+}
+
+export async function runSetTheme(themeName: string): Promise<SetThemeResult> {
+  return applyTheme(themeName);
+}
+
+export { listThemes };
+
 async function main() {
   const { positionals, values } = parseArgs({
-    args: Bun.argv.slice(2),
+    args: process.argv.slice(2),
     options: {
       info: { type: "boolean", short: "i" },
     },
@@ -165,8 +191,8 @@ async function main() {
       process.exit(0);
     }
 
-    console.log(`${colors.cyan}Usage: bun run theme <theme-name>${colors.reset}`);
-    console.log(`       bun run theme --info <theme-name>\n`);
+    console.log(`${colors.cyan}Usage: formalconf theme <theme-name>${colors.reset}`);
+    console.log(`       formalconf theme --info <theme-name>\n`);
     console.log("Available themes:");
     for (const theme of themes) {
       const extras = [];
@@ -183,8 +209,17 @@ async function main() {
   if (values.info) {
     await showThemeInfo(themeName);
   } else {
-    await applyTheme(themeName);
+    const result = await applyTheme(themeName);
+    console.log(
+      result.success
+        ? `${colors.green}${result.output}${colors.reset}`
+        : `${colors.red}${result.output}${colors.reset}`
+    );
   }
 }
 
-main().catch(console.error);
+// Only run main when executed directly
+const isMainModule = process.argv[1]?.includes("set-theme");
+if (isMainModule) {
+  main().catch(console.error);
+}
