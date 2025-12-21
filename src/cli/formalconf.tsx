@@ -200,7 +200,7 @@ function ThemeMenu({ onBack }: { onBack: () => void }) {
   const [success, setSuccess] = useState(true);
   const { columns, rows } = useTerminalSize();
 
-  const CARD_HEIGHT = 5;
+  const CARD_HEIGHT = 3;
   const LAYOUT_OVERHEAD = 20; // header + breadcrumb + panel + footer + padding
   const cardWidth = useMemo(() => {
     const availableWidth = columns - 6; // panel borders + padding

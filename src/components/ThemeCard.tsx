@@ -38,16 +38,6 @@ export function ThemeCard({ theme, isSelected, width }: ThemeCardProps) {
         <Text color={colors.primaryDim}>{indicatorText}</Text>
       </Box>
 
-      {theme.metadata?.author && (
-        <Text dimColor wrap="truncate">
-          by {theme.metadata.author}
-        </Text>
-      )}
-      {theme.metadata?.description && (
-        <Text wrap="truncate" color={colors.text}>
-          {theme.metadata.description.slice(0, innerWidth)}
-        </Text>
-      )}
     </Box>
   );
 }
