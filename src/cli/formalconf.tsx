@@ -292,4 +292,4 @@ function App() {
   );
 }
 
-render(<App />);
+render(<App />, { fullScreen: true });
