@@ -31,6 +31,7 @@ export async function execLive(command: string[], cwd?: string): Promise<number>
   const proc = Bun.spawn(command, {
     stdout: "inherit",
     stderr: "inherit",
+    stdin: "inherit",
     cwd,
   });
   return await proc.exited;
