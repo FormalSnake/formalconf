@@ -1,6 +1,6 @@
 import { parseArgs } from "util";
 import { exec, execLive, commandExists } from "../lib/shell";
-import { execStreaming } from "../lib/runtime";
+import { execStreaming, execStreamingWithTTY } from "../lib/runtime";
 import { loadPkgConfig } from "../lib/config";
 import { updateLockfile } from "../lib/lockfile";
 import type { PkgConfig, UpgradeablePackage, MasApp } from "../types/pkg-config";
@@ -33,9 +33,13 @@ function createDefaultCallbacks(): PkgSyncCallbacks {
 async function runCommand(
   command: string[],
   callbacks: PkgSyncCallbacks | null,
-  cwd?: string
+  cwd?: string,
+  needsTTY: boolean = false
 ): Promise<number> {
   if (callbacks) {
+    if (needsTTY) {
+      return execStreamingWithTTY(command, callbacks.onLog, cwd);
+    }
     return execStreaming(command, callbacks.onLog, cwd);
   }
   return execLive(command, cwd);
@@ -181,7 +185,7 @@ async function upgradeWithVerification(cb: PkgSyncCallbacks | null = null): Prom
     const masOutdated = await getOutdatedMas();
     if (masOutdated.length > 0) {
       log(`\n${colors.cyan}=== Upgrading Mac App Store apps ===${colors.reset}\n`);
-      await runCommand(["mas", "upgrade"], cb);
+      await runCommand(["mas", "upgrade"], cb, undefined, true);
     }
   }
 
@@ -299,7 +303,7 @@ async function syncPackages(config: PkgConfig, cb: PkgSyncCallbacks | null = nul
     for (const [name, id] of Object.entries(config.mas)) {
       if (!installedMas.includes(id)) {
         log(`  Installing: ${colors.blue}${name}${colors.reset}`);
-        await runCommand(["mas", "install", String(id)], cb);
+        await runCommand(["mas", "install", String(id)], cb, undefined, true);
       }
     }
   }
@@ -392,11 +396,11 @@ async function purgeUnlisted(
         if (interactive) {
           const answer = await askPrompt(`Remove app ${colors.red}${app.name}${colors.reset}?`, ["y", "n"]);
           if (answer === "y") {
-            await runCommand(["mas", "uninstall", String(app.id)], cb);
+            await runCommand(["mas", "uninstall", String(app.id)], cb, undefined, true);
           }
         } else {
           log(`  Removing app: ${colors.red}${app.name}${colors.reset}`);
-          await runCommand(["mas", "uninstall", String(app.id)], cb);
+          await runCommand(["mas", "uninstall", String(app.id)], cb, undefined, true);
         }
       }
     }
