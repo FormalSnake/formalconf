@@ -87,9 +87,9 @@ export function OrphanTable({ result, onAction, onDismiss }: OrphanTableProps) {
 
       <Box marginTop={1}>
         {orphans.length > 0 ? (
-          <Text dimColor>j/k navigate | a add to config | x uninstall | q back</Text>
+          <Text dimColor>j/k navigate | a add to config | x uninstall | esc/h back | q quit</Text>
         ) : (
-          <Text dimColor>Press q to go back</Text>
+          <Text dimColor>esc/h back | q quit</Text>
         )}
       </Box>
     </Panel>

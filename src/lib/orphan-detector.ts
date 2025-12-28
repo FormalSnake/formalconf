@@ -26,18 +26,27 @@ export async function detectOrphanedPackages(): Promise<OrphanDetectionResult> {
 
   const orphans: OrphanedPackage[] = [];
 
-  // Build sets for both full names and short names from config
-  const configPackagesSet = new Set<string>();
-  for (const pkg of config.packages) {
-    configPackagesSet.add(pkg);
-    configPackagesSet.add(getPackageName(pkg));
-  }
+  // Build list of config package names (both full and short forms)
+  const configPackages = config.packages.map((pkg) => ({
+    full: pkg,
+    short: getPackageName(pkg),
+  }));
 
-  // Find orphaned formulas - check both full name and short name
-  for (const pkg of installedLeaves) {
-    const shortName = getPackageName(pkg);
-    if (!configPackagesSet.has(pkg) && !configPackagesSet.has(shortName)) {
-      orphans.push({ name: pkg, type: "formula" });
+  // Find orphaned formulas - check various matching strategies
+  for (const installed of installedLeaves) {
+    const installedShort = getPackageName(installed);
+    const isInConfig = configPackages.some(
+      (cfg) =>
+        // Exact match (full or short)
+        installed === cfg.full ||
+        installed === cfg.short ||
+        installedShort === cfg.full ||
+        installedShort === cfg.short ||
+        // Tap-prefixed match: "tap/repo/pkg" ends with "/pkg"
+        installed.endsWith(`/${cfg.short}`)
+    );
+    if (!isInConfig) {
+      orphans.push({ name: installed, type: "formula" });
     }
   }
 
