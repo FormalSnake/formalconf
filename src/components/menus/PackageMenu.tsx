@@ -6,11 +6,18 @@ import { CommandOutput } from "../CommandOutput";
 import { LoadingPanel } from "../LoadingPanel";
 import { ScrollableLog } from "../ScrollableLog";
 import { PromptInput } from "../PromptInput";
+import { OrphanTable } from "../OrphanTable";
 import { runPkgSyncWithCallbacks } from "../../cli/pkg-sync";
 import type { PkgSyncCallbacks } from "../../cli/pkg-sync";
 import { runPkgLock } from "../../cli/pkg-lock";
+import {
+  detectOrphanedPackages,
+  addToConfig,
+  uninstallPackage,
+} from "../../lib/orphan-detector";
 import { colors } from "../../lib/theme";
 import type { MenuState } from "../../hooks/useMenuAction";
+import type { OrphanDetectionResult, OrphanedPackage } from "../../types/pkg-config";
 
 interface PendingPrompt {
   question: string;
@@ -29,13 +36,15 @@ export function PackageMenu({ onBack }: PackageMenuProps) {
   const [isStreamingOp, setIsStreamingOp] = useState(true);
   const [pendingPrompt, setPendingPrompt] = useState<PendingPrompt | null>(null);
   const [success, setSuccess] = useState(true);
+  const [orphanResult, setOrphanResult] = useState<OrphanDetectionResult | null>(null);
+  const [isOrphanView, setIsOrphanView] = useState(false);
   const isRunningRef = useRef(false);
 
   useInput((input, key) => {
     if (state === "menu" && (key.escape || key.leftArrow || input === "h")) {
       onBack();
     }
-    if (state === "result") {
+    if (state === "result" && !isOrphanView) {
       setState("menu");
       setLines([]);
     }
@@ -109,6 +118,13 @@ export function PackageMenu({ onBack }: PackageMenuProps) {
         result = await runPkgLock(["status"]);
         setOutput(result.output);
         break;
+      case "orphans":
+        setIsStreamingOp(false);
+        setIsOrphanView(true);
+        const orphanData = await detectOrphanedPackages();
+        setOrphanResult(orphanData);
+        result = { output: "", success: true };
+        break;
       default:
         setIsStreamingOp(false);
         result = { output: "Unknown action", success: false };
@@ -139,6 +155,32 @@ export function PackageMenu({ onBack }: PackageMenuProps) {
   }
 
   if (state === "result") {
+    if (isOrphanView && orphanResult) {
+      const handleOrphanAction = async (
+        action: "add" | "uninstall",
+        pkg: OrphanedPackage
+      ) => {
+        if (action === "add") {
+          await addToConfig(pkg);
+        } else {
+          await uninstallPackage(pkg);
+        }
+        const updated = await detectOrphanedPackages();
+        setOrphanResult(updated);
+      };
+
+      return (
+        <OrphanTable
+          result={orphanResult}
+          onAction={handleOrphanAction}
+          onDismiss={() => {
+            setIsOrphanView(false);
+            setState("menu");
+          }}
+        />
+      );
+    }
+
     if (!isStreamingOp) {
       return (
         <CommandOutput
@@ -172,6 +214,7 @@ export function PackageMenu({ onBack }: PackageMenuProps) {
           { label: "Upgrade interactive", value: "upgrade-interactive" },
           { label: "Update lockfile", value: "lock-update" },
           { label: "Lockfile status", value: "lock-status" },
+          { label: "Find orphaned packages", value: "orphans" },
           { label: "Back", value: "back" },
         ]}
         onChange={handleAction}

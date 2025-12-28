@@ -70,3 +70,16 @@ export const SYSTEM_APP_IDS: readonly number[] = [
   1176895641, // Spark
   1451685025, // WireGuard
 ] as const;
+
+export interface OrphanedPackage {
+  name: string;
+  type: "formula" | "cask";
+}
+
+export interface OrphanDetectionResult {
+  orphans: OrphanedPackage[];
+  configFormulas: number;
+  configCasks: number;
+  installedLeaves: number;
+  installedCasks: number;
+}
