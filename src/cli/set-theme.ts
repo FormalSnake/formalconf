@@ -1,13 +1,16 @@
 import { parseArgs } from "util";
 import { readdirSync, existsSync, rmSync, symlinkSync, unlinkSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
 import {
   THEMES_DIR,
   THEME_TARGET_DIR,
   BACKGROUNDS_TARGET_DIR,
+  HOME_DIR,
   ensureConfigDir,
   ensureDir,
 } from "../lib/paths";
+
+const LYNK_BROWSER_CSS = join(HOME_DIR, ".config", "lynk-browser", "style.css");
 import { parseTheme } from "../lib/theme-parser";
 import type { Theme } from "../types/theme";
 
@@ -101,6 +104,14 @@ async function applyTheme(themeName: string): Promise<{ output: string; success:
   if (theme.hasBackgrounds) {
     const backgroundsSource = join(themeDir, "backgrounds");
     createSymlink(backgroundsSource, BACKGROUNDS_TARGET_DIR);
+  }
+
+  // Symlink lynk-browser style.css if present
+  const styleCssSource = join(themeDir, "style.css");
+  if (existsSync(styleCssSource)) {
+    const lynkBrowserDir = dirname(LYNK_BROWSER_CSS);
+    await ensureDir(lynkBrowserDir);
+    createSymlink(styleCssSource, LYNK_BROWSER_CSS);
   }
 
   let output = `Theme '${theme.name}' applied successfully`;
