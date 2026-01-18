@@ -15,8 +15,12 @@ const colors = {
 
 async function checkStow(): Promise<void> {
   if (!(await commandExists("stow"))) {
+    const isMacOS = process.platform === "darwin";
+    const installHint = isMacOS
+      ? "brew install stow"
+      : "Install via your package manager (pacman -S stow, apt install stow, dnf install stow)";
     console.error(
-      `${colors.red}Error: GNU Stow is not installed. Install with: brew install stow${colors.reset}`
+      `${colors.red}Error: GNU Stow is not installed. ${installHint}${colors.reset}`
     );
     process.exit(1);
   }
