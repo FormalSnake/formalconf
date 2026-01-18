@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from "react";
+import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import { VimSelect } from "../ui/VimSelect";
 import { Panel } from "../layout/Panel";
@@ -15,9 +15,12 @@ import {
   addToConfig,
   uninstallPackage,
 } from "../../lib/orphan-detector";
+import { getPlatformInfo, getPlatformDisplayName } from "../../lib/platform";
+import { getAvailableManagers } from "../../lib/package-managers";
 import { colors } from "../../lib/theme";
 import type { MenuState } from "../../hooks/useMenuAction";
 import type { OrphanDetectionResult, OrphanedPackage } from "../../types/pkg-config";
+import type { PlatformInfo } from "../../types/platform";
 
 interface PendingPrompt {
   question: string;
@@ -38,7 +41,20 @@ export function PackageMenu({ onBack }: PackageMenuProps) {
   const [success, setSuccess] = useState(true);
   const [orphanResult, setOrphanResult] = useState<OrphanDetectionResult | null>(null);
   const [isOrphanView, setIsOrphanView] = useState(false);
+  const [platformInfo, setPlatformInfo] = useState<PlatformInfo | null>(null);
+  const [availableManagerNames, setAvailableManagerNames] = useState<string[]>([]);
   const isRunningRef = useRef(false);
+
+  useEffect(() => {
+    async function loadPlatformInfo() {
+      const info = await getPlatformInfo();
+      setPlatformInfo(info);
+
+      const managers = await getAvailableManagers();
+      setAvailableManagerNames(managers.map((m) => m.displayName));
+    }
+    loadPlatformInfo();
+  }, []);
 
   useInput((input, key) => {
     if (state === "menu" && (key.escape || key.leftArrow || input === "h")) {
@@ -204,8 +220,26 @@ export function PackageMenu({ onBack }: PackageMenuProps) {
     );
   }
 
+  const platformDisplay = platformInfo
+    ? getPlatformDisplayName(platformInfo)
+    : "Detecting...";
+
+  const managersDisplay = availableManagerNames.length > 0
+    ? availableManagerNames.join(", ")
+    : "Detecting...";
+
   return (
     <Panel title="Package Sync">
+      <Box marginBottom={1} flexDirection="column">
+        <Text>
+          <Text dimColor>Platform: </Text>
+          <Text color={colors.info}>{platformDisplay}</Text>
+        </Text>
+        <Text>
+          <Text dimColor>Managers: </Text>
+          <Text color={colors.info}>{managersDisplay}</Text>
+        </Text>
+      </Box>
       <VimSelect
         options={[
           { label: "Sync packages", value: "sync" },

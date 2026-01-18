@@ -283,17 +283,55 @@ export interface PrerequisiteResult {
   missing: { name: string; install: string }[];
 }
 
-// Check required prerequisites
+// Check required prerequisites (platform-aware)
 export async function checkPrerequisites(): Promise<PrerequisiteResult> {
-  const required = [
-    { name: "stow", install: "brew install stow" },
-    { name: "brew", install: "https://brew.sh" },
+  const isMacOS = process.platform === "darwin";
+
+  // Common prerequisites
+  const common: { name: string; macInstall: string; linuxInstall: string }[] = [
+    {
+      name: "stow",
+      macInstall: "brew install stow",
+      linuxInstall: "Install via your package manager (pacman -S stow, apt install stow, etc.)",
+    },
   ];
 
+  // Platform-specific prerequisites
+  const platformSpecific: { name: string; install: string }[] = isMacOS
+    ? [{ name: "brew", install: "https://brew.sh" }]
+    : []; // Linux doesn't require a specific package manager
+
   const missing: { name: string; install: string }[] = [];
-  for (const dep of required) {
+
+  // Check common prerequisites
+  for (const dep of common) {
+    if (!(await commandExists(dep.name))) {
+      missing.push({
+        name: dep.name,
+        install: isMacOS ? dep.macInstall : dep.linuxInstall,
+      });
+    }
+  }
+
+  // Check platform-specific prerequisites
+  for (const dep of platformSpecific) {
     if (!(await commandExists(dep.name))) {
       missing.push(dep);
+    }
+  }
+
+  // On Linux, check that at least one package manager is available
+  if (!isMacOS) {
+    const packageManagers = ["pacman", "apt", "dnf"];
+    const hasPackageManager = await Promise.all(
+      packageManagers.map((pm) => commandExists(pm))
+    ).then((results) => results.some(Boolean));
+
+    if (!hasPackageManager) {
+      missing.push({
+        name: "package manager",
+        install: "No supported package manager found (pacman, apt, or dnf)",
+      });
     }
   }
 

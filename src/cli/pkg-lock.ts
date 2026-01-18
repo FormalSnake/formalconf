@@ -85,22 +85,33 @@ async function showLockfile(): Promise<void> {
   console.log(`${colors.bold}Package Lockfile${colors.reset}`);
   console.log(`Last updated: ${lock.lastUpdated}\n`);
 
-  const formulaNames = Object.keys(lock.formulas).sort();
-  const caskNames = Object.keys(lock.casks).sort();
-
-  if (formulaNames.length > 0) {
-    console.log(`${colors.cyan}Formulas (${formulaNames.length}):${colors.reset}`);
-    for (const name of formulaNames) {
-      const { version, tap } = lock.formulas[name];
-      console.log(`  ${name} ${colors.blue}${version}${colors.reset} (${tap})`);
+  if (lock.version === 2) {
+    // V2 format
+    const packages = Object.entries(lock.packages).sort(([a], [b]) => a.localeCompare(b));
+    console.log(`${colors.cyan}Packages (${packages.length}):${colors.reset}`);
+    for (const [key, info] of packages) {
+      const [manager, name] = key.split(":");
+      console.log(`  ${name} ${colors.blue}${info.version}${colors.reset} (${manager}${info.tap ? `, ${info.tap}` : ""})`);
     }
-  }
+  } else {
+    // V1 format (legacy)
+    const formulaNames = Object.keys(lock.formulas).sort();
+    const caskNames = Object.keys(lock.casks).sort();
 
-  if (caskNames.length > 0) {
-    console.log(`\n${colors.cyan}Casks (${caskNames.length}):${colors.reset}`);
-    for (const name of caskNames) {
-      const { version } = lock.casks[name];
-      console.log(`  ${name} ${colors.blue}${version}${colors.reset}`);
+    if (formulaNames.length > 0) {
+      console.log(`${colors.cyan}Formulas (${formulaNames.length}):${colors.reset}`);
+      for (const name of formulaNames) {
+        const { version, tap } = lock.formulas[name];
+        console.log(`  ${name} ${colors.blue}${version}${colors.reset} (${tap})`);
+      }
+    }
+
+    if (caskNames.length > 0) {
+      console.log(`\n${colors.cyan}Casks (${caskNames.length}):${colors.reset}`);
+      for (const name of caskNames) {
+        const { version } = lock.casks[name];
+        console.log(`  ${name} ${colors.blue}${version}${colors.reset}`);
+      }
     }
   }
 }
@@ -124,8 +135,9 @@ export async function runPkgLock(args: string[]): Promise<PkgLockResult> {
   switch (command) {
     case "update": {
       const lock = await updateLockfile();
-      const total =
-        Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
+      const total = lock.version === 2
+        ? Object.keys(lock.packages).length
+        : Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
       return { output: `Lockfile updated with ${total} packages`, success: true };
     }
     case "status": {
@@ -168,8 +180,9 @@ async function main() {
     case "update": {
       console.log(`${colors.cyan}Updating lockfile...${colors.reset}`);
       const lock = await updateLockfile();
-      const total =
-        Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
+      const total = lock.version === 2
+        ? Object.keys(lock.packages).length
+        : Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
       console.log(
         `${colors.green}Lockfile updated with ${total} packages.${colors.reset}`
       );
@@ -182,8 +195,7 @@ async function main() {
       console.log(`${colors.cyan}Regenerating lockfile...${colors.reset}`);
       const lock = await generateLockfile();
       await savePkgLock(lock);
-      const total =
-        Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
+      const total = Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
       console.log(
         `${colors.green}Lockfile regenerated with ${total} packages.${colors.reset}`
       );

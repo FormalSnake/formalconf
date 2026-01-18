@@ -1,9 +1,24 @@
 import { parseArgs } from "util";
-import { exec, execLive, commandExists } from "../lib/shell";
+import { exec, commandExists } from "../lib/shell";
 import { execStreaming, execStreamingWithTTY } from "../lib/runtime";
 import { loadPkgConfig } from "../lib/config";
 import { updateLockfile } from "../lib/lockfile";
-import type { PkgConfig, UpgradeablePackage, MasApp } from "../types/pkg-config";
+import { getPlatformInfo, getOS, getLinuxDistro, getPlatformDisplayName } from "../lib/platform";
+import {
+  getPackageManager,
+  getAvailableManagers,
+  HomebrewFormulas,
+  HomebrewCasks,
+  MacAppStore,
+  Pacman,
+  AurPackageManager,
+  Apt,
+  Dnf,
+  Flatpak,
+} from "../lib/package-managers";
+import type { PackageManager, PackageManagerCallbacks } from "../lib/package-managers";
+import type { PkgConfigV2, MasApp } from "../types/pkg-config";
+import type { PlatformInfo } from "../types/platform";
 import { SYSTEM_APP_IDS } from "../types/pkg-config";
 
 const colors = {
@@ -42,6 +57,9 @@ async function runCommand(
     }
     return execStreaming(command, callbacks.onLog, cwd);
   }
+
+  // Import execLive at runtime to avoid circular dependency
+  const { execLive } = await import("../lib/shell");
   return execLive(command, cwd);
 }
 
@@ -52,61 +70,183 @@ interface UpgradeResult {
   stillOutdated: string[];
 }
 
-async function checkDependencies(): Promise<void> {
-  if (!(await commandExists("brew"))) {
-    console.error(`${colors.red}Error: Homebrew not installed${colors.reset}`);
-    process.exit(1);
-  }
+// ============================================================================
+// Platform-Aware Package Resolution
+// ============================================================================
+
+interface PackageSet {
+  manager: PackageManager;
+  packages: string[];
+  repositories?: string[];
 }
 
-async function getOutdatedPackages(): Promise<UpgradeablePackage[]> {
-  const [formulas, casks] = await Promise.all([
-    exec(["brew", "outdated", "--formula", "--quiet"]),
-    exec(["brew", "outdated", "--cask", "--quiet"]),
-  ]);
+async function getPackageSetsForPlatform(
+  config: PkgConfigV2,
+  platform: PlatformInfo
+): Promise<PackageSet[]> {
+  const sets: PackageSet[] = [];
 
-  const packages: UpgradeablePackage[] = [];
+  if (platform.os === "darwin") {
+    // macOS: Homebrew formulas, casks, and MAS
+    const formulas = getPackageManager("homebrew") as HomebrewFormulas;
+    const casks = getPackageManager("homebrew-casks") as HomebrewCasks;
+    const mas = getPackageManager("mas") as MacAppStore;
 
-  if (formulas.stdout) {
-    packages.push(
-      ...formulas.stdout
-        .split("\n")
-        .filter(Boolean)
-        .map((name) => ({ name, type: "formula" as const }))
-    );
-  }
+    // Global packages via brew
+    const globalPkgs = config.global?.packages || [];
+    const macosFormulas = config.macos?.formulas || [];
+    const allFormulas = [...globalPkgs, ...macosFormulas];
 
-  if (casks.stdout) {
-    packages.push(
-      ...casks.stdout
-        .split("\n")
-        .filter(Boolean)
-        .map((name) => ({ name, type: "cask" as const }))
-    );
-  }
+    if (allFormulas.length > 0 || (config.macos?.taps || []).length > 0) {
+      sets.push({
+        manager: formulas,
+        packages: allFormulas,
+        repositories: config.macos?.taps,
+      });
+    }
 
-  return packages;
-}
+    const macosCasks = config.macos?.casks || [];
+    if (macosCasks.length > 0) {
+      sets.push({
+        manager: casks,
+        packages: macosCasks,
+      });
+    }
 
-async function getOutdatedMas(): Promise<MasApp[]> {
-  const result = await exec(["mas", "outdated"]);
-  if (!result.success || !result.stdout) return [];
+    const masMappings = config.macos?.mas || {};
+    const masIds = Object.values(masMappings).map(String);
+    if (masIds.length > 0 && (await mas.isAvailable())) {
+      sets.push({
+        manager: mas,
+        packages: masIds,
+      });
+    }
+  } else {
+    // Linux
+    const distro = platform.distro;
 
-  return result.stdout
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => {
-      const match = line.match(/^(\d+)\s+(.+?)(?:\s+\(|$)/);
-      if (match) {
-        return { id: parseInt(match[1], 10), name: match[2].trim() };
+    // Get global packages
+    const globalPkgs = config.global?.packages || [];
+    const linuxPkgs = config.linux?.packages || [];
+
+    if (distro === "arch") {
+      // Arch Linux: pacman + AUR
+      const pacman = getPackageManager("pacman") as Pacman;
+      const aur = getPackageManager("aur") as AurPackageManager;
+
+      const archPkgs = config.arch?.packages || [];
+      const allPacmanPkgs = [...globalPkgs, ...linuxPkgs, ...archPkgs];
+
+      if (allPacmanPkgs.length > 0) {
+        sets.push({
+          manager: pacman,
+          packages: allPacmanPkgs,
+        });
       }
-      return null;
-    })
-    .filter((app): app is MasApp => app !== null);
+
+      const aurPkgs = config.arch?.aur || [];
+      if (aurPkgs.length > 0 && (await aur.isAvailable())) {
+        sets.push({
+          manager: aur,
+          packages: aurPkgs,
+        });
+      }
+    } else if (distro === "debian" || distro === "ubuntu") {
+      // Debian/Ubuntu: apt
+      const apt = getPackageManager("apt") as Apt;
+
+      const debianPkgs = config.debian?.packages || [];
+      const allAptPkgs = [...globalPkgs, ...linuxPkgs, ...debianPkgs];
+
+      if (allAptPkgs.length > 0 || (config.debian?.ppas || []).length > 0) {
+        sets.push({
+          manager: apt,
+          packages: allAptPkgs,
+          repositories: config.debian?.ppas,
+        });
+      }
+    } else if (distro === "fedora" || distro === "rhel") {
+      // Fedora/RHEL: dnf
+      const dnf = getPackageManager("dnf") as Dnf;
+
+      const fedoraPkgs = config.fedora?.packages || [];
+      const allDnfPkgs = [...globalPkgs, ...linuxPkgs, ...fedoraPkgs];
+
+      if (allDnfPkgs.length > 0 || (config.fedora?.copr || []).length > 0) {
+        sets.push({
+          manager: dnf,
+          packages: allDnfPkgs,
+          repositories: config.fedora?.copr?.map((r) => `copr:${r}`),
+        });
+      }
+    } else {
+      // Unknown distro: try to use whatever package manager is available
+      const managers = await getAvailableManagers();
+      const primaryManager = managers.find(
+        (m) => m.type === "pacman" || m.type === "apt" || m.type === "dnf"
+      );
+
+      if (primaryManager) {
+        const allPkgs = [...globalPkgs, ...linuxPkgs];
+        if (allPkgs.length > 0) {
+          sets.push({
+            manager: primaryManager,
+            packages: allPkgs,
+          });
+        }
+      }
+    }
+
+    // Flatpak (cross-distro)
+    const flatpak = getPackageManager("flatpak") as Flatpak;
+    const flatpakApps = config.linux?.flatpak || [];
+    if (flatpakApps.length > 0 && (await flatpak.isAvailable())) {
+      sets.push({
+        manager: flatpak,
+        packages: flatpakApps,
+      });
+    }
+  }
+
+  return sets;
 }
 
-async function upgradeWithVerification(cb: PkgSyncCallbacks | null = null): Promise<UpgradeResult> {
+// ============================================================================
+// Dependency Check
+// ============================================================================
+
+async function checkDependencies(platform: PlatformInfo): Promise<void> {
+  if (platform.os === "darwin") {
+    if (!(await commandExists("brew"))) {
+      console.error(`${colors.red}Error: Homebrew not installed${colors.reset}`);
+      process.exit(1);
+    }
+  } else {
+    // Linux: check for at least one package manager
+    const hasPackageManager = await Promise.all([
+      commandExists("pacman"),
+      commandExists("apt"),
+      commandExists("dnf"),
+    ]).then((results) => results.some(Boolean));
+
+    if (!hasPackageManager) {
+      console.error(
+        `${colors.red}Error: No supported package manager found (pacman, apt, or dnf)${colors.reset}`
+      );
+      process.exit(1);
+    }
+  }
+}
+
+// ============================================================================
+// Upgrade Functions
+// ============================================================================
+
+async function upgradeWithVerification(
+  cb: PkgSyncCallbacks | null = null
+): Promise<UpgradeResult> {
   const log = cb?.onLog ?? console.log;
+  const platform = await getPlatformInfo();
 
   const result: UpgradeResult = {
     attempted: [],
@@ -115,28 +255,39 @@ async function upgradeWithVerification(cb: PkgSyncCallbacks | null = null): Prom
     stillOutdated: [],
   };
 
+  const callbacks: PackageManagerCallbacks | undefined = cb
+    ? { onLog: cb.onLog }
+    : undefined;
+
   log(`\n${colors.cyan}=== Checking for updates ===${colors.reset}\n`);
-  await runCommand(["brew", "update"], cb);
 
-  const beforeUpgrade = await getOutdatedPackages();
-  result.attempted = beforeUpgrade.map((p) => p.name);
+  const managers = await getAvailableManagers();
 
-  if (beforeUpgrade.length === 0) {
-    log(`\n${colors.green}All brew packages are up to date${colors.reset}`);
-  } else {
-    log(`\n${colors.yellow}Found ${beforeUpgrade.length} outdated packages${colors.reset}\n`);
+  for (const manager of managers) {
+    log(`\n${colors.cyan}--- ${manager.displayName} ---${colors.reset}\n`);
 
-    log(`${colors.cyan}=== Upgrading formulas ===${colors.reset}\n`);
-    await runCommand(["brew", "upgrade", "--formula"], cb);
+    // Update package lists
+    await manager.update(callbacks);
 
-    log(`\n${colors.cyan}=== Upgrading casks ===${colors.reset}\n`);
-    await runCommand(["brew", "upgrade", "--cask", "--greedy"], cb);
+    // Get outdated packages
+    const outdated = await manager.listOutdated();
 
-    log(`\n${colors.cyan}=== Verifying upgrades ===${colors.reset}\n`);
-    const afterUpgrade = await getOutdatedPackages();
-    const stillOutdatedSet = new Set(afterUpgrade.map((p) => p.name));
+    if (outdated.length === 0) {
+      log(`${colors.green}All packages are up to date${colors.reset}`);
+      continue;
+    }
 
-    for (const pkg of beforeUpgrade) {
+    log(`${colors.yellow}Found ${outdated.length} outdated packages${colors.reset}\n`);
+    result.attempted.push(...outdated.map((p) => p.name));
+
+    // Upgrade all
+    await manager.upgrade(undefined, callbacks);
+
+    // Verify upgrades
+    const stillOutdated = await manager.listOutdated();
+    const stillOutdatedSet = new Set(stillOutdated.map((p) => p.name));
+
+    for (const pkg of outdated) {
       if (stillOutdatedSet.has(pkg.name)) {
         result.stillOutdated.push(pkg.name);
       } else {
@@ -144,57 +295,45 @@ async function upgradeWithVerification(cb: PkgSyncCallbacks | null = null): Prom
       }
     }
 
+    // Retry failed upgrades individually
     if (result.stillOutdated.length > 0) {
-      log(`${colors.yellow}${result.stillOutdated.length} packages still outdated, retrying individually...${colors.reset}\n`);
+      log(
+        `${colors.yellow}${result.stillOutdated.length} packages still outdated, retrying individually...${colors.reset}\n`
+      );
 
       for (const pkgName of [...result.stillOutdated]) {
-        const pkg = afterUpgrade.find((p) => p.name === pkgName);
-        if (!pkg) continue;
-
         log(`  Retrying ${colors.blue}${pkgName}${colors.reset}...`);
 
-        const upgradeCmd =
-          pkg.type === "cask"
-            ? ["brew", "upgrade", "--cask", pkgName]
-            : ["brew", "upgrade", pkgName];
+        const upgradeSuccess = await manager.upgrade([pkgName], callbacks);
+        const checkOutdated = await manager.listOutdated();
+        const stillFailing = checkOutdated.some((p) => p.name === pkgName);
 
-        const retryResult = await exec(upgradeCmd);
-
-        const checkResult = await exec([
-          "brew",
-          "outdated",
-          pkg.type === "cask" ? "--cask" : "--formula",
-          "--quiet",
-        ]);
-        const stillOutdatedNow = checkResult.stdout.split("\n").filter(Boolean);
-
-        if (!stillOutdatedNow.includes(pkgName)) {
+        if (!stillFailing) {
           result.succeeded.push(pkgName);
           result.stillOutdated = result.stillOutdated.filter((n) => n !== pkgName);
           log(`    ${colors.green}✓ Success${colors.reset}`);
         } else {
           result.failed.push(pkgName);
           result.stillOutdated = result.stillOutdated.filter((n) => n !== pkgName);
-          log(`    ${colors.red}✗ Failed${colors.reset} ${retryResult.stderr ? `(${retryResult.stderr.split("\n")[0]})` : ""}`);
+          log(`    ${colors.red}✗ Failed${colors.reset}`);
         }
       }
     }
   }
 
-  if (await commandExists("mas")) {
-    const masOutdated = await getOutdatedMas();
-    if (masOutdated.length > 0) {
-      log(`\n${colors.cyan}=== Upgrading Mac App Store apps ===${colors.reset}\n`);
-      await runCommand(["mas", "upgrade"], cb, undefined, true);
-    }
+  // Cleanup
+  log(`\n${colors.cyan}=== Cleanup ===${colors.reset}\n`);
+  for (const manager of managers) {
+    await manager.cleanup(callbacks);
   }
 
-  log(`\n${colors.cyan}=== Cleanup ===${colors.reset}\n`);
-  await runCommand(["brew", "cleanup"], cb);
-
+  // Update lockfile
   log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
   const lock = await updateLockfile();
-  const lockTotal = Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
+  const lockTotal =
+    lock.version === 2
+      ? Object.keys(lock.packages).length
+      : Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
   log(`  Locked ${lockTotal} packages`);
 
   return result;
@@ -204,212 +343,209 @@ async function upgradeInteractive(cb: PkgSyncCallbacks | null = null): Promise<v
   const log = cb?.onLog ?? console.log;
   const askPrompt = cb?.onPrompt ?? (async (q: string) => (prompt(q) || "").trim().toLowerCase());
 
-  log(`\n${colors.cyan}=== Checking for updates ===${colors.reset}\n`);
-  await runCommand(["brew", "update"], cb);
+  const callbacks: PackageManagerCallbacks | undefined = cb
+    ? { onLog: cb.onLog }
+    : undefined;
 
-  const outdated = await getOutdatedPackages();
+  const managers = await getAvailableManagers();
 
-  if (outdated.length === 0) {
-    log(`\n${colors.green}All packages are up to date${colors.reset}\n`);
-    return;
-  }
+  for (const manager of managers) {
+    log(`\n${colors.cyan}=== ${manager.displayName} ===${colors.reset}\n`);
 
-  log(`\n${colors.yellow}Found ${outdated.length} outdated packages${colors.reset}\n`);
+    await manager.update(callbacks);
 
-  for (const pkg of outdated) {
-    const question = `Upgrade ${colors.blue}${pkg.name}${colors.reset} (${pkg.type})?`;
-    const answer = await askPrompt(question, ["y", "n", "q"]);
+    const outdated = await manager.listOutdated();
 
-    if (answer === "q") {
-      log(`\n${colors.yellow}Upgrade cancelled${colors.reset}`);
-      return;
+    if (outdated.length === 0) {
+      log(`${colors.green}All packages are up to date${colors.reset}\n`);
+      continue;
     }
-    if (answer === "y" || answer === "yes") {
-      const cmd =
-        pkg.type === "cask"
-          ? ["brew", "upgrade", "--cask", pkg.name]
-          : ["brew", "upgrade", pkg.name];
-      await runCommand(cmd, cb);
+
+    log(`${colors.yellow}Found ${outdated.length} outdated packages${colors.reset}\n`);
+
+    for (const pkg of outdated) {
+      const question = `Upgrade ${colors.blue}${pkg.name}${colors.reset} (${pkg.currentVersion} -> ${pkg.newVersion})?`;
+      const answer = await askPrompt(question, ["y", "n", "q"]);
+
+      if (answer === "q") {
+        log(`\n${colors.yellow}Upgrade cancelled${colors.reset}`);
+        return;
+      }
+      if (answer === "y" || answer === "yes") {
+        await manager.upgrade([pkg.name], callbacks);
+      }
     }
   }
 
-  const stillOutdated = await getOutdatedPackages();
-  if (stillOutdated.length > 0) {
-    log(`\n${colors.yellow}Still outdated: ${stillOutdated.map((p) => p.name).join(", ")}${colors.reset}`);
-  } else {
-    log(`\n${colors.green}All selected packages upgraded successfully${colors.reset}`);
+  // Cleanup
+  for (const manager of managers) {
+    await manager.cleanup(callbacks);
   }
-
-  await runCommand(["brew", "cleanup"], cb);
 
   log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
   await updateLockfile();
 }
 
-async function syncPackages(config: PkgConfig, cb: PkgSyncCallbacks | null = null): Promise<void> {
+// ============================================================================
+// Sync Functions
+// ============================================================================
+
+async function syncPackages(
+  config: PkgConfigV2,
+  cb: PkgSyncCallbacks | null = null
+): Promise<void> {
   const log = cb?.onLog ?? console.log;
+  const platform = await getPlatformInfo();
 
+  const callbacks: PackageManagerCallbacks | undefined = cb
+    ? { onLog: cb.onLog }
+    : undefined;
+
+  log(`\n${colors.cyan}Platform: ${getPlatformDisplayName(platform)}${colors.reset}\n`);
+
+  // Get package sets for this platform
+  const packageSets = await getPackageSetsForPlatform(config, platform);
+
+  if (packageSets.length === 0) {
+    log(`${colors.yellow}No packages configured for this platform${colors.reset}`);
+    return;
+  }
+
+  // Update package managers if auto-update is enabled
   if (config.config.autoUpdate) {
-    log(`\n${colors.cyan}=== Updating Homebrew ===${colors.reset}\n`);
-    await runCommand(["brew", "update"], cb);
-  }
-
-  log(`\n${colors.cyan}=== Installing taps ===${colors.reset}\n`);
-  const tappedResult = await exec(["brew", "tap"]);
-  const tapped = tappedResult.stdout.split("\n").filter(Boolean);
-
-  for (const tap of config.taps) {
-    if (!tapped.includes(tap)) {
-      log(`  Adding tap: ${colors.blue}${tap}${colors.reset}`);
-      await runCommand(["brew", "tap", tap], cb);
+    log(`\n${colors.cyan}=== Updating package managers ===${colors.reset}\n`);
+    for (const set of packageSets) {
+      log(`  Updating ${set.manager.displayName}...`);
+      await set.manager.update(callbacks);
     }
   }
 
-  log(`\n${colors.cyan}=== Installing packages ===${colors.reset}\n`);
-  const installedFormulas = (await exec(["brew", "list", "--formula"])).stdout
-    .split("\n")
-    .filter(Boolean);
+  // Process each package set
+  for (const set of packageSets) {
+    log(`\n${colors.cyan}=== ${set.manager.displayName} ===${colors.reset}\n`);
 
-  for (const pkg of config.packages) {
-    if (!installedFormulas.includes(pkg)) {
-      log(`  Installing: ${colors.blue}${pkg}${colors.reset}`);
-      await runCommand(["brew", "install", pkg], cb);
-    }
-  }
-
-  log(`\n${colors.cyan}=== Installing casks ===${colors.reset}\n`);
-  const installedCasks = (await exec(["brew", "list", "--cask"])).stdout
-    .split("\n")
-    .filter(Boolean);
-
-  for (const cask of config.casks) {
-    if (!installedCasks.includes(cask)) {
-      log(`  Installing: ${colors.blue}${cask}${colors.reset}`);
-      await runCommand(["brew", "install", "--cask", cask], cb);
-    }
-  }
-
-  if (await commandExists("mas")) {
-    log(`\n${colors.cyan}=== Installing Mac App Store apps ===${colors.reset}\n`);
-    const masResult = await exec(["mas", "list"]);
-    const installedMas = masResult.stdout
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        const match = line.match(/^(\d+)/);
-        return match ? parseInt(match[1], 10) : 0;
-      });
-
-    for (const [name, id] of Object.entries(config.mas)) {
-      if (!installedMas.includes(id)) {
-        log(`  Installing: ${colors.blue}${name}${colors.reset}`);
-        await runCommand(["mas", "install", String(id)], cb, undefined, true);
+    // Add repositories if needed
+    if (set.repositories && set.repositories.length > 0 && set.manager.addRepository) {
+      log(`  Adding repositories...`);
+      for (const repo of set.repositories) {
+        log(`    ${colors.blue}${repo}${colors.reset}`);
+        await set.manager.addRepository(repo, callbacks);
       }
     }
+
+    // Check which packages are already installed
+    if (set.packages.length === 0) {
+      log(`  No packages to install`);
+      continue;
+    }
+
+    const installedMap = await set.manager.isInstalled(set.packages);
+    const toInstall = set.packages.filter((pkg) => !installedMap.get(pkg));
+
+    if (toInstall.length === 0) {
+      log(`  All ${set.packages.length} packages already installed`);
+    } else {
+      log(`  Installing ${toInstall.length} packages...`);
+      for (const pkg of toInstall) {
+        log(`    ${colors.blue}${pkg}${colors.reset}`);
+      }
+      await set.manager.install(toInstall, callbacks);
+    }
   }
 
+  // Purge if enabled
   if (config.config.purge) {
     await purgeUnlisted(config, config.config.purgeInteractive, cb);
   }
 
+  // Update lockfile
   log(`\n${colors.cyan}=== Updating lockfile ===${colors.reset}\n`);
   const lock = await updateLockfile();
-  const lockTotal = Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
+  const lockTotal =
+    lock.version === 2
+      ? Object.keys(lock.packages).length
+      : Object.keys(lock.formulas).length + Object.keys(lock.casks).length;
   log(`  Locked ${lockTotal} packages`);
 
   log(`\n${colors.green}=== Sync complete ===${colors.reset}\n`);
 }
 
+// ============================================================================
+// Purge Functions
+// ============================================================================
+
 async function purgeUnlisted(
-  config: PkgConfig,
+  config: PkgConfigV2,
   interactive: boolean,
   cb: PkgSyncCallbacks | null = null
 ): Promise<void> {
   const log = cb?.onLog ?? console.log;
   const askPrompt = cb?.onPrompt ?? (async (q: string) => (prompt(q) || "").trim().toLowerCase());
+  const platform = await getPlatformInfo();
+
+  const callbacks: PackageManagerCallbacks | undefined = cb
+    ? { onLog: cb.onLog }
+    : undefined;
 
   log(`\n${colors.cyan}=== Checking for unlisted packages ===${colors.reset}\n`);
 
-  const installedFormulas = (await exec(["brew", "list", "--formula"])).stdout
-    .split("\n")
-    .filter(Boolean);
+  const packageSets = await getPackageSetsForPlatform(config, platform);
 
-  for (const pkg of installedFormulas) {
-    if (!config.packages.includes(pkg)) {
-      const usesResult = await exec(["brew", "uses", "--installed", pkg]);
-      if (usesResult.stdout.trim()) {
-        log(`  ${colors.yellow}Skipping ${pkg} (has dependents)${colors.reset}`);
-        continue;
+  for (const set of packageSets) {
+    const configuredSet = new Set(set.packages);
+
+    // Get user-installed packages (leaves)
+    let installedLeaves: string[];
+    if (set.manager.listLeaves) {
+      installedLeaves = await set.manager.listLeaves();
+    } else {
+      const installed = await set.manager.listInstalled();
+      installedLeaves = installed.map((p) => p.name);
+    }
+
+    for (const pkg of installedLeaves) {
+      // Skip if in config
+      if (configuredSet.has(pkg)) continue;
+
+      // For MAS, skip system apps
+      if (set.manager.type === "mas") {
+        const appId = parseInt(pkg, 10);
+        if (SYSTEM_APP_IDS.includes(appId)) continue;
+      }
+
+      // For Homebrew formulas, check if it has dependents
+      if (set.manager.type === "homebrew") {
+        const formulas = set.manager as HomebrewFormulas;
+        if (await formulas.hasDependents(pkg)) {
+          log(`  ${colors.yellow}Skipping ${pkg} (has dependents)${colors.reset}`);
+          continue;
+        }
       }
 
       if (interactive) {
-        const answer = await askPrompt(`Remove ${colors.red}${pkg}${colors.reset}?`, ["y", "n"]);
+        const answer = await askPrompt(
+          `Remove ${colors.red}${pkg}${colors.reset} (${set.manager.displayName})?`,
+          ["y", "n"]
+        );
         if (answer === "y") {
-          await runCommand(["brew", "uninstall", pkg], cb);
+          await set.manager.uninstall([pkg], callbacks);
         }
       } else {
         log(`  Removing: ${colors.red}${pkg}${colors.reset}`);
-        await runCommand(["brew", "uninstall", pkg], cb);
-      }
-    }
-  }
-
-  const installedCasks = (await exec(["brew", "list", "--cask"])).stdout
-    .split("\n")
-    .filter(Boolean);
-
-  for (const cask of installedCasks) {
-    if (!config.casks.includes(cask)) {
-      if (interactive) {
-        const answer = await askPrompt(`Remove cask ${colors.red}${cask}${colors.reset}?`, ["y", "n"]);
-        if (answer === "y") {
-          await runCommand(["brew", "uninstall", "--cask", cask], cb);
-        }
-      } else {
-        log(`  Removing cask: ${colors.red}${cask}${colors.reset}`);
-        await runCommand(["brew", "uninstall", "--cask", cask], cb);
-      }
-    }
-  }
-
-  if (await commandExists("mas")) {
-    const masResult = await exec(["mas", "list"]);
-    const installedMas = masResult.stdout
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        const match = line.match(/^(\d+)\s+(.+?)(?:\s+\(|$)/);
-        return match
-          ? { id: parseInt(match[1], 10), name: match[2].trim() }
-          : null;
-      })
-      .filter((app): app is MasApp => app !== null);
-
-    const configMasIds = Object.values(config.mas);
-
-    for (const app of installedMas) {
-      if (SYSTEM_APP_IDS.includes(app.id)) {
-        continue;
-      }
-
-      if (!configMasIds.includes(app.id)) {
-        if (interactive) {
-          const answer = await askPrompt(`Remove app ${colors.red}${app.name}${colors.reset}?`, ["y", "n"]);
-          if (answer === "y") {
-            await runCommand(["mas", "uninstall", String(app.id)], cb, undefined, true);
-          }
-        } else {
-          log(`  Removing app: ${colors.red}${app.name}${colors.reset}`);
-          await runCommand(["mas", "uninstall", String(app.id)], cb, undefined, true);
-        }
+        await set.manager.uninstall([pkg], callbacks);
       }
     }
   }
 
   log(`\n${colors.cyan}=== Cleaning up ===${colors.reset}\n`);
-  await runCommand(["brew", "autoremove"], cb);
-  await runCommand(["brew", "cleanup"], cb);
+  for (const set of packageSets) {
+    await set.manager.cleanup(callbacks);
+  }
 }
+
+// ============================================================================
+// CLI Interface
+// ============================================================================
 
 function printUsage(): void {
   console.log(`
@@ -447,13 +583,13 @@ export async function runPkgSyncWithCallbacks(
     allowPositionals: true,
   });
 
+  const platform = await getPlatformInfo();
+
   try {
-    if (!(await commandExists("brew"))) {
-      callbacks.onLog(`${colors.red}Error: Homebrew not installed${colors.reset}`);
-      return { output: "Homebrew not installed", success: false };
-    }
+    await checkDependencies(platform);
   } catch {
-    return { output: "Homebrew not installed", success: false };
+    callbacks.onLog(`${colors.red}Error: Required dependencies not installed${colors.reset}`);
+    return { output: "Dependencies not installed", success: false };
   }
 
   if (values["upgrade-interactive"]) {
@@ -496,10 +632,12 @@ export async function runPkgSync(args: string[]): Promise<PkgSyncResult> {
     allowPositionals: true,
   });
 
+  const platform = await getPlatformInfo();
+
   try {
-    await checkDependencies();
+    await checkDependencies(platform);
   } catch {
-    return { output: "Homebrew not installed", success: false };
+    return { output: "Dependencies not installed", success: false };
   }
 
   if (values["upgrade-only"]) {
@@ -542,7 +680,8 @@ async function main() {
     process.exit(0);
   }
 
-  await checkDependencies();
+  const platform = await getPlatformInfo();
+  await checkDependencies(platform);
 
   if (values["upgrade-interactive"]) {
     await upgradeInteractive();
@@ -552,7 +691,6 @@ async function main() {
   if (values["upgrade-only"]) {
     const result = await upgradeWithVerification();
 
-    // Print summary
     console.log(`\n${colors.bold}=== Upgrade Summary ===${colors.reset}\n`);
 
     if (result.succeeded.length > 0) {
