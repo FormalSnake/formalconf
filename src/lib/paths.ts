@@ -13,6 +13,7 @@ export const SRC_DIR = scriptPath;
 export const ROOT_DIR = join(scriptPath, "..", "..");
 export const CONFIGS_DIR = join(CONFIG_DIR, "configs");
 export const THEMES_DIR = join(CONFIG_DIR, "themes");
+export const HOOKS_DIR = join(CONFIG_DIR, "hooks");
 export const PKG_CONFIG_PATH = join(CONFIG_DIR, "pkg-config.json");
 export const PKG_LOCK_PATH = join(CONFIG_DIR, "pkg-lock.json");
 export const THEME_CONFIG_PATH = join(CONFIG_DIR, "theme-config.json");

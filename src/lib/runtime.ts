@@ -15,12 +15,19 @@ export interface ShellResult {
 }
 
 // Spawn abstraction - uses Bun.spawn or child_process.spawn
-export async function exec(command: string[], cwd?: string): Promise<ShellResult> {
+export async function exec(
+  command: string[],
+  cwd?: string,
+  env?: Record<string, string>
+): Promise<ShellResult> {
+  const mergedEnv = env ? { ...process.env, ...env } : undefined;
+
   if (isBun) {
     const proc = Bun.spawn(command, {
       stdout: "pipe",
       stderr: "pipe",
       cwd,
+      env: mergedEnv,
     });
 
     const [stdout, stderr] = await Promise.all([
@@ -41,7 +48,7 @@ export async function exec(command: string[], cwd?: string): Promise<ShellResult
   // Node fallback
   return new Promise((resolve) => {
     const [cmd, ...args] = command;
-    const proc = nodeSpawn(cmd, args, { cwd, shell: false });
+    const proc = nodeSpawn(cmd, args, { cwd, shell: false, env: mergedEnv });
 
     let stdout = "";
     let stderr = "";

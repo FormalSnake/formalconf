@@ -10,6 +10,7 @@ import {
 } from "../lib/paths";
 
 import { parseTheme } from "../lib/theme-parser";
+import { runHooks } from "../lib/hooks";
 import {
   getDeviceHostname,
   getDeviceTheme,
@@ -133,6 +134,21 @@ async function applyTheme(
   }
   if (theme.isLightMode) {
     output += `\nNote: This is a light mode theme`;
+  }
+
+  // Run theme-change hooks
+  const hookSummary = await runHooks("theme-change", {
+    FORMALCONF_THEME: themeName,
+    FORMALCONF_THEME_DIR: themeDir,
+  });
+
+  if (hookSummary.executed > 0) {
+    output += `\nHooks: ${hookSummary.succeeded}/${hookSummary.executed} succeeded`;
+    for (const result of hookSummary.results) {
+      if (!result.success) {
+        output += `\n  ⚠ ${result.script} failed (exit ${result.exitCode})`;
+      }
+    }
   }
 
   return { output, success: true };
