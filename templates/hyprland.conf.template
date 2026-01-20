@@ -4,7 +4,7 @@
 
 # General colors
 general {
-    col.active_border = {{accent.rgb}} {{color4.rgb}} 45deg
+    col.active_border = {{accent.rgba}} {{color4.rgba}} 45deg
     col.inactive_border = {{border.rgb}}
 }
 
