@@ -1,4 +1,4 @@
-import { PKG_CONFIG_PATH, PKG_LOCK_PATH, ensureConfigDir } from "./paths";
+import { PKG_CONFIG_PATH, getPkgLockPath, ensureConfigDir } from "./paths";
 import { readJson, writeFile } from "./runtime";
 import type {
   PkgConfig,
@@ -151,15 +151,17 @@ export async function savePkgConfigAny(
 // ============================================================================
 
 export async function loadPkgLock(): Promise<PkgLock | null> {
-  if (!existsSync(PKG_LOCK_PATH)) {
+  const lockPath = getPkgLockPath();
+  if (!existsSync(lockPath)) {
     return null;
   }
-  return readJson<PkgLock>(PKG_LOCK_PATH);
+  return readJson<PkgLock>(lockPath);
 }
 
 export async function savePkgLock(lock: PkgLock): Promise<void> {
   await ensureConfigDir();
-  await writeFile(PKG_LOCK_PATH, JSON.stringify(lock, null, 2));
+  const lockPath = getPkgLockPath();
+  await writeFile(lockPath, JSON.stringify(lock, null, 2));
 }
 
 // ============================================================================

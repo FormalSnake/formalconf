@@ -2,6 +2,7 @@ import { homedir } from "os";
 import { join } from "path";
 import { readdir } from "fs/promises";
 import { getScriptDir, ensureDir as runtimeEnsureDir } from "./runtime";
+import { getOS } from "./platform";
 
 export const HOME_DIR = homedir();
 export const CONFIG_DIR = join(HOME_DIR, ".config", "formalconf");
@@ -15,7 +16,14 @@ export const CONFIGS_DIR = join(CONFIG_DIR, "configs");
 export const THEMES_DIR = join(CONFIG_DIR, "themes");
 export const HOOKS_DIR = join(CONFIG_DIR, "hooks");
 export const PKG_CONFIG_PATH = join(CONFIG_DIR, "pkg-config.json");
-export const PKG_LOCK_PATH = join(CONFIG_DIR, "pkg-lock.json");
+
+export function getPkgLockPath(): string {
+  const os = getOS();
+  return join(CONFIG_DIR, `pkg-lock-${os}.json`);
+}
+
+// Keep constant for backward compatibility (deprecated)
+export const PKG_LOCK_PATH = getPkgLockPath();
 export const THEME_CONFIG_PATH = join(CONFIG_DIR, "theme-config.json");
 
 // Theme V2: Template-based system
