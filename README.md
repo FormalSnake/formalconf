@@ -242,6 +242,8 @@ The `{{#if property}}...{{/if}}` block is only included when the property exists
 
 Run `bun run theme --install-templates` to install the default templates, then modify them as needed. Your customizations are preserved across updates.
 
+For a complete working example of configs, themes, and templates, see the [FormalSnake dotfiles](https://github.com/FormalSnake/dotfiles).
+
 ### Theme Hooks
 
 Run custom scripts when a theme is applied. Useful for setting wallpapers, sending notifications, or triggering other theme-dependent actions.
