@@ -202,6 +202,40 @@ green = "{{color2}}"
 
 **Color modifiers** can transform colors: `{{background|lighten:10}}`, `{{accent|darken:20}}`, `{{color1|alpha:0.8}}`
 
+**Conditionals** allow optional sections based on theme properties:
+
+```lua
+-- Example: ~/.config/formalconf/templates/neovim.lua.template
+return {
+  {
+    "{{dark.neovim.repo}}",
+    name = "formalconf-colorscheme",
+    priority = 1000,
+  },
+  {
+    "LazyVim/LazyVim",
+    opts = {
+      colorscheme = "{{dark.neovim.colorscheme}}",
+    },
+  },
+{{#if dark.neovim.light_colorscheme}}
+  {
+    "f-person/auto-dark-mode.nvim",
+    opts = {
+      set_dark_mode = function()
+        vim.cmd("colorscheme {{dark.neovim.colorscheme}}")
+      end,
+      set_light_mode = function()
+        vim.cmd("colorscheme {{dark.neovim.light_colorscheme}}")
+      end,
+    },
+  },
+{{/if}}
+}
+```
+
+The `{{#if property}}...{{/if}}` block is only included when the property exists in the theme JSON.
+
 **Template modes:**
 - **Single-mode** (`app.conf.template`) - One template for both variants
 - **Partial-mode** (`app-dark.conf.template` + `app-light.conf.template`) - Separate templates per variant
