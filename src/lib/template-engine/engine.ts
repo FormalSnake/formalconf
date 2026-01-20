@@ -19,6 +19,7 @@ import type {
   TemplateContext,
   DualModeTemplateContext,
   TemplateThemeMetadata,
+  TemplateGtkMetadata,
   TemplateFile,
   RenderResult,
 } from "./types";
@@ -46,6 +47,22 @@ function buildThemeMetadata(
     description: theme.description ?? "",
     source: theme.source ?? "",
     mode,
+  };
+}
+
+/**
+ * Builds GTK metadata for template context
+ */
+function buildGtkMetadata(
+  theme: ThemeJson,
+  mode: ThemeMode
+): TemplateGtkMetadata {
+  // GTK theme name matches what Colloid install.sh generates:
+  // formalconf-{themename}-{Dark|Light}
+  const themeName = theme.title.toLowerCase().replace(/\s+/g, "-");
+  const modeCapitalized = mode === "dark" ? "Dark" : "Light";
+  return {
+    theme: `formalconf-${themeName}-${modeCapitalized}`,
   };
 }
 
@@ -91,6 +108,8 @@ export function buildTemplateContext(
     border: hexToColorVariableOrDefault(palette.border, palette.color0),
     // Theme metadata
     theme: buildThemeMetadata(theme, mode),
+    // GTK theme metadata
+    gtk: buildGtkMetadata(theme, mode),
     // Mode
     mode,
   };

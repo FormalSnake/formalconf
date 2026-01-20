@@ -20,6 +20,14 @@ export interface TemplateThemeMetadata {
 }
 
 /**
+ * GTK theme metadata accessible in templates via {{gtk.xxx}}
+ */
+export interface TemplateGtkMetadata {
+  /** GTK theme name, e.g., "formalconf-catppuccin-Dark" */
+  theme: string;
+}
+
+/**
  * Full template context with all color variables and metadata
  */
 export interface TemplateContext {
@@ -50,6 +58,8 @@ export interface TemplateContext {
   border: ColorVariable;
   // Theme metadata
   theme: TemplateThemeMetadata;
+  // GTK theme metadata (Linux)
+  gtk: TemplateGtkMetadata;
   // Current mode
   mode: ThemeMode;
 }

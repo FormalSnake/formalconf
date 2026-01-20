@@ -64,6 +64,13 @@ function getContextValue(
     return value !== undefined ? String(value) : undefined;
   }
 
+  // Handle GTK metadata access
+  if (variableName.startsWith("gtk.")) {
+    const key = variableName.slice(4) as keyof TemplateContext["gtk"];
+    const value = context.gtk[key];
+    return value !== undefined ? String(value) : undefined;
+  }
+
   // Handle mode
   if (variableName === "mode") {
     return context.mode;
