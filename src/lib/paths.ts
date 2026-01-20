@@ -29,6 +29,11 @@ export const BUNDLED_MANIFEST_PATH = join(BUNDLED_TEMPLATES_DIR, "templates.json
 export const GTK_DIR = join(CONFIG_DIR, "gtk");
 export const COLLOID_DIR = join(GTK_DIR, "colloid-gtk-theme");
 
+// QT/Kvantum Theme Support
+export const QT_DIR = join(CONFIG_DIR, "qt");
+export const KVANTUM_CONFIG_DIR = join(HOME_DIR, ".config", "Kvantum");
+export const KVANTUM_THEME_DIR = join(KVANTUM_CONFIG_DIR, "FormalConf");
+
 export async function ensureDir(path: string): Promise<void> {
   await runtimeEnsureDir(path);
 }

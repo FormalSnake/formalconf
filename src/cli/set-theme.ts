@@ -23,6 +23,8 @@ import { runHooks } from "../lib/hooks";
 import { getOS } from "../lib/platform";
 import { applyGtkTheme } from "../lib/gtk";
 import type { GtkInstallResult } from "../lib/gtk";
+import { applyQtTheme, getAndMarkSetupReminder } from "../lib/qt";
+import type { QtInstallResult } from "../lib/qt";
 import {
   getDeviceHostname,
   getDeviceTheme,
@@ -255,6 +257,12 @@ async function applyJsonTheme(
     gtkResult = await applyGtkTheme(theme, mode);
   }
 
+  // Apply QT/Kvantum theme on Linux
+  let qtResult: QtInstallResult | null = null;
+  if (getOS() === "linux") {
+    qtResult = await applyQtTheme(theme, mode);
+  }
+
   // Save device mapping if requested
   if (saveMapping) {
     await setDeviceTheme(identifier);
@@ -285,6 +293,18 @@ async function applyJsonTheme(
       output += `\n  Warning: GTK theme failed - ${gtkResult.error}`;
     }
   }
+  if (qtResult && !qtResult.skipped) {
+    if (qtResult.success) {
+      output += `\nQT theme: ${qtResult.themeName}`;
+      // Show setup reminder for first-time users
+      const setupReminder = await getAndMarkSetupReminder();
+      if (setupReminder) {
+        output += `\n\n${setupReminder}`;
+      }
+    } else {
+      output += `\n  Warning: QT theme failed - ${qtResult.error}`;
+    }
+  }
 
   // Run theme-change hooks
   const hookEnv: Record<string, string> = {
@@ -297,6 +317,9 @@ async function applyJsonTheme(
   }
   if (gtkResult?.success && gtkResult.themeName) {
     hookEnv.FORMALCONF_GTK_THEME = gtkResult.themeName;
+  }
+  if (qtResult?.success && qtResult.themeName) {
+    hookEnv.FORMALCONF_QT_THEME = qtResult.themeName;
   }
   const hookSummary = await runHooks("theme-change", hookEnv);
 
