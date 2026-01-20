@@ -20,6 +20,9 @@ import {
 
 import { parseTheme } from "../lib/theme-parser";
 import { runHooks } from "../lib/hooks";
+import { getOS } from "../lib/platform";
+import { applyGtkTheme } from "../lib/gtk";
+import type { GtkInstallResult } from "../lib/gtk";
 import {
   getDeviceHostname,
   getDeviceTheme,
@@ -246,6 +249,12 @@ async function applyJsonTheme(
     wallpaperErrors = wallpaperResult.errors;
   }
 
+  // Apply GTK theme on Linux
+  let gtkResult: GtkInstallResult | null = null;
+  if (getOS() === "linux") {
+    gtkResult = await applyGtkTheme(theme, mode);
+  }
+
   // Save device mapping if requested
   if (saveMapping) {
     await setDeviceTheme(identifier);
@@ -269,6 +278,13 @@ async function applyJsonTheme(
   for (const error of wallpaperErrors) {
     output += `\n  Warning: ${error}`;
   }
+  if (gtkResult && !gtkResult.skipped) {
+    if (gtkResult.success) {
+      output += `\nGTK theme: ${gtkResult.themeName}`;
+    } else {
+      output += `\n  Warning: GTK theme failed - ${gtkResult.error}`;
+    }
+  }
 
   // Run theme-change hooks
   const hookEnv: Record<string, string> = {
@@ -278,6 +294,9 @@ async function applyJsonTheme(
   };
   if (wallpaperPaths.length > 0) {
     hookEnv.FORMALCONF_WALLPAPER_PATHS = wallpaperPaths.join(":");
+  }
+  if (gtkResult?.success && gtkResult.themeName) {
+    hookEnv.FORMALCONF_GTK_THEME = gtkResult.themeName;
   }
   const hookSummary = await runHooks("theme-change", hookEnv);
 
