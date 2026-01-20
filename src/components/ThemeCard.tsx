@@ -36,6 +36,8 @@ export function ThemeCard({ theme, isSelected, width, isDeviceTheme }: ThemeCard
   const indicatorText = indicators.length > 0 ? ` [${indicators.join(" ")}]` : "";
 
   const displayName = isLegacyTheme(theme) ? theme.name : theme.displayName;
+  const author = isLegacyTheme(theme) ? theme.metadata?.author : theme.author;
+  const description = isLegacyTheme(theme) ? theme.metadata?.description : theme.description;
 
   return (
     <Box
@@ -54,6 +56,16 @@ export function ThemeCard({ theme, isSelected, width, isDeviceTheme }: ThemeCard
         </Text>
         <Text color={colors.primaryDim}>{indicatorText}</Text>
       </Box>
+      {author && (
+        <Box paddingLeft={2}>
+          <Text color={colors.primaryDim} wrap="truncate">by {author}</Text>
+        </Box>
+      )}
+      {description && (
+        <Box paddingLeft={2}>
+          <Text color={colors.primaryDim} dimColor wrap="truncate">{description}</Text>
+        </Box>
+      )}
     </Box>
   );
 }

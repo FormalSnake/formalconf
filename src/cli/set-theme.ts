@@ -80,6 +80,8 @@ export interface UnifiedThemeEntry {
   path: string;
   /** Author */
   author?: string;
+  /** Description */
+  description?: string;
   /** Has wallpapers (legacy only) */
   hasBackgrounds?: boolean;
   /** Is light mode (legacy only) */
@@ -104,6 +106,7 @@ async function listAllThemes(): Promise<UnifiedThemeEntry[]> {
         mode,
         path: item.path,
         author: item.theme.author,
+        description: item.theme.description,
       });
     }
   }
@@ -121,6 +124,7 @@ async function listAllThemes(): Promise<UnifiedThemeEntry[]> {
           type: "legacy",
           path: themePath,
           author: theme.metadata?.author,
+          description: theme.metadata?.description,
           hasBackgrounds: theme.hasBackgrounds,
           isLightMode: theme.isLightMode,
         });
