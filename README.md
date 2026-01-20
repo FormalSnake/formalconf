@@ -2,7 +2,7 @@
 
 # ⚙️ FormalConf
 
-### A macOS dotfiles management TUI built with React & Ink
+### A macOS and Linux dotfiles management TUI built with React & Ink
 
 [![Ink](https://img.shields.io/badge/Ink-5.0.1-00C7B7?style=for-the-badge&logo=react&logoColor=white)](https://github.com/vadimdemedes/ink)
 [![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
@@ -24,17 +24,23 @@
 - Maintains clean home directory structure
 
 ### **Package Synchronization**
-- **Homebrew formulas & casks** sync from a single JSON config
-- **Mac App Store apps** via `mas` CLI integration
+- **Homebrew formulas & casks** sync from a single JSON config (macOS)
+- **Mac App Store apps** via `mas` CLI integration (macOS)
+- **Pacman/AUR** support for Arch Linux
+- **APT** support for Debian/Ubuntu
+- **DNF** support for Fedora
+- **Flatpak** for Linux (cross-distro)
+- **Cargo** for Rust packages (cross-platform)
 - **Purge mode** to remove unlisted packages
 - **Lockfile support** for reproducible package installations
 - Smart dependency detection prevents removal of system-critical apps
 
 ### **Theme System**
-- **Omarchy-compatible themes** with symlink-based switching
-- Application-specific theme configs (Ghostty, Btop, Neovim, etc.)
+- **JSON-based themes** with template engine for config generation
+- Application-specific theme configs (Ghostty, Btop, Neovim, Waybar, Hyprland, etc.)
 - Theme discovery with metadata parsing (author, colors, light/dark mode)
 - Background support as part of themes
+- **15 bundled themes**: catppuccin, ethereal, everforest, flexoki, gruvbox, hackerman, kanagawa, matte-black, nord, orng, osaka-jade, ristretto, rose-pine, tokyo-night, vesper
 - **Hook support** for custom scripts on theme change (wallpaper, notifications, etc.)
 
 ### **Interactive TUI**
@@ -82,15 +88,18 @@ FormalConf expects your configuration files in `~/.config/formalconf/`:
 
 ```
 ~/.config/formalconf/
-├── configs/           # Your dotfile packages (stow directories)
-│   ├── nvim/          # Example: Neovim config
-│   ├── tmux/          # Example: tmux config
-│   └── ...
-├── themes/            # Omarchy-compatible themes
+├── configs/           # Stow packages (aerospace, btop, fish, ghostty, git, hypr, neovim, tmux, waybar...)
+├── themes/            # JSON theme files
+├── templates/         # Template files for app configs
+├── generated/         # Auto-generated theme configs
+├── current/           # Symlinked current theme
+│   ├── theme/         # Generated theme files
+│   └── backgrounds/   # Theme wallpapers
 ├── hooks/             # Event hook scripts
 │   └── theme-change/  # Scripts run after theme changes
 ├── pkg-config.json    # Package sync configuration
-└── pkg-lock.json      # Package version lockfile
+├── pkg-lock.json      # Package version lockfile
+└── theme-config.json  # Device/default theme mapping
 ```
 
 ### Dotfile Configs
@@ -109,26 +118,64 @@ When stowed, this creates: `~/.config/nvim/init.lua`
 
 ### Package Config
 
-Define your packages in `pkg-config.json`:
+Define your packages in `pkg-config.json` (version 2 format with cross-platform support):
 
 ```json
 {
+  "version": 2,
   "config": {
     "purge": false,
+    "purgeInteractive": true,
     "autoUpdate": true
   },
-  "taps": ["oven-sh/bun"],
-  "packages": ["neovim", "tmux", "ripgrep"],
-  "casks": ["ghostty", "raycast"],
-  "mas": {
-    "Xcode": 497799835
+  "global": {
+    "packages": ["bat", "btop", "neovim", "ripgrep", "tmux", "yazi"],
+    "cargo": ["lumen"]
+  },
+  "macos": {
+    "taps": ["oven-sh/bun"],
+    "formulas": ["gh", "node", "rust"],
+    "casks": ["ghostty", "raycast"],
+    "mas": { "Xcode": 497799835 }
+  },
+  "archlinux": {
+    "pacman": ["hyprland", "waybar", "ghostty"],
+    "aur": ["hyprlauncher"]
   }
 }
 ```
 
-### Theme Compatibility
+### Theme Format
 
-FormalConf supports [Omarchy themes](https://learn.omacom.io/2/the-omarchy-manual/52/themes). Place themes in `~/.config/formalconf/themes/` following the Omarchy theme structure.
+FormalConf uses JSON-based themes with a template engine for generating application configs. Place theme files in `~/.config/formalconf/themes/`:
+
+```json
+{
+  "title": "Catppuccin",
+  "description": "Soothing pastel theme for the high-spirited",
+  "author": "Catppuccin Org",
+  "version": "1.0.0",
+  "source": "https://github.com/catppuccin/catppuccin",
+  "dark": {
+    "color0": "#45475a",
+    "color1": "#f38ba8",
+    "background": "#1e1e2e",
+    "foreground": "#cdd6f4",
+    "cursor": "#f5e0dc",
+    "selection_background": "#45475a",
+    "accent": "#cba6f7",
+    "border": "#313244"
+  },
+  "light": { /* same structure with light colors */ },
+  "neovim": {
+    "repo": "catppuccin/nvim",
+    "colorscheme": "catppuccin-mocha",
+    "light_colorscheme": "catppuccin-latte"
+  }
+}
+```
+
+**Supported Template Targets (18):** Alacritty, Kitty, Ghostty, btop, Neovim, Waybar, Wofi, Walker, Hyprland, Hyprlock, Mako, SwayOSD, Lynk
 
 ### Theme Hooks
 
@@ -139,14 +186,19 @@ Run custom scripts when a theme is applied. Useful for setting wallpapers, sendi
 mkdir -p ~/.config/formalconf/hooks/theme-change
 ```
 
-**Example hook** (`~/.config/formalconf/hooks/theme-change/set-wallpaper.sh`):
+**Example hook** (`~/.config/formalconf/hooks/theme-change/wallpaper.sh`):
 ```bash
-#!/bin/bash
-echo "Theme changed to: $FORMALCONF_THEME"
-# Set wallpaper from theme's backgrounds directory
-if [ -d "$FORMALCONF_THEME_DIR/backgrounds" ]; then
-  osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"$FORMALCONF_THEME_DIR/backgrounds/wallpaper.jpg\""
-fi
+#!/usr/bin/env bash
+BACKGROUNDS_DIR="$HOME/.config/formalconf/current/backgrounds"
+mapfile -t FILES < <(find -L "$BACKGROUNDS_DIR" -maxdepth 1 -type f 2>/dev/null)
+[[ ${#FILES[@]} -eq 0 ]] && exit 0
+RANDOM_IDX=$((RANDOM % ${#FILES[@]}))
+WALLPAPER="${FILES[$RANDOM_IDX]}"
+
+case "$(uname -s)" in
+  Darwin) osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"$WALLPAPER\"" ;;
+  Linux) swww img "$WALLPAPER" --transition-type center --transition-duration 0.8 ;;
+esac
 ```
 
 Make executable: `chmod +x ~/.config/formalconf/hooks/theme-change/set-wallpaper.sh`
@@ -167,12 +219,16 @@ Scripts run in alphabetical order. Failed hooks don't prevent theme application.
 ### Commands
 
 ```bash
-bun run formalconf        # Launch interactive TUI
-bun run config <cmd>      # Config management (stow, unstow, status, list, stow-all, unstow-all)
-bun run pkg-sync          # Sync packages from pkg-config.json
-bun run pkg-sync --purge  # Sync and remove unlisted packages
-bun run theme <name>      # Apply a theme
-bun run typecheck         # Run TypeScript type checking
+bun run formalconf              # Launch interactive TUI
+bun run config <cmd>            # Config management (stow, unstow, status, list, stow-all, unstow-all)
+bun run pkg-sync                # Sync packages from pkg-config.json
+bun run pkg-sync --purge        # Sync and remove unlisted packages
+bun run pkg-lock                # Generate/update package lockfile
+bun run theme <name>:<variant>  # Apply a theme (e.g., catppuccin:dark, tokyo-night:light)
+bun run theme --install-templates  # Install/update default templates
+bun run theme --template-status    # Check template versions
+bun run theme --migrate <name>     # Migrate legacy theme to JSON format
+bun run typecheck               # Run TypeScript type checking
 ```
 
 ### Project Structure
@@ -203,8 +259,8 @@ src/
 FormalConf combines three systems into a unified TUI:
 
 1. **Configuration Manager** - Wraps GNU Stow for symlink-based dotfile management
-2. **Package Sync** - Orchestrates Homebrew and Mac App Store package synchronization
-3. **Theme Switcher** - Manages Omarchy-compatible themes via symlinks
+2. **Package Sync** - Orchestrates cross-platform package synchronization (Homebrew, Pacman, APT, DNF, Flatpak, Cargo)
+3. **Theme Switcher** - Manages JSON themes via template engine
 
 ### Key Concepts
 
@@ -225,8 +281,8 @@ FormalConf combines three systems into a unified TUI:
 | **UI Framework** | Ink, React |
 | **Language** | TypeScript |
 | **Config Management** | GNU Stow |
-| **Package Management** | Homebrew, mas |
-| **Theme Format** | Omarchy-compatible |
+| **Package Management** | Homebrew, mas, Pacman, AUR, APT, DNF, Flatpak, Cargo |
+| **Theme Format** | JSON + Templates |
 
 </div>
 
@@ -260,7 +316,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Symlink management powered by [GNU Stow](https://www.gnu.org/software/stow/)
 - Terminal UI built with [Ink](https://github.com/vadimdemedes/ink)
-- Theme format compatible with [Omarchy](https://learn.omacom.io/2/the-omarchy-manual/52/themes)
 
 ---
 

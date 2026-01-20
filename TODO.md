@@ -58,7 +58,7 @@
 - [x] Update TUI theme menu for variants
 - [x] Add `--migrate` CLI option
 - [ ] Test all templates with catppuccin colors (dark + light)
-- [ ] Documentation updates
+- [x] Documentation updates
 
 ## Files Created
 

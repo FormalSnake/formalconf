@@ -3,141 +3,164 @@
 This file provides guidance to WARP (warp.dev) when working with code in this repository.
 
 Project overview
-- FormalConf is a macOS-focused dotfiles management system. It provides:
+- FormalConf is a cross-platform dotfiles management system for macOS and Linux. It provides:
   - GNU Stow–based configuration management (configs/)
-  - Homebrew/package synchronization driven by pkg-config.json
-  - A symlink-based theme system (themes/) applied to ~/.config/formalconf/current/theme
-  - An interactive TUI to orchestrate everything
+  - Cross-platform package synchronization driven by pkg-config.json (Homebrew, Pacman, AUR, APT, DNF, Flatpak, Cargo)
+  - A JSON-based theme system with template engine for generating app configs
+  - An interactive TUI built with React/Ink to orchestrate everything
 
-Prerequisites (macOS)
-- Install required tools:
-
-```bash
-brew install stow jq mas
-```
+Prerequisites
+- macOS: `brew install stow jq mas`
+- Arch Linux: `sudo pacman -S stow jq`
+- Debian/Ubuntu: `sudo apt install stow jq`
 
 Common commands
 - Launch TUI (recommended):
 
 ```bash
-./formalconf.sh
+bun run formalconf
 ```
 
 - Configuration management (GNU Stow):
   - List available packages:
 
 ```bash
-./config-manager.sh list
+bun run config list
 ```
 
   - Check link status of all packages:
 
 ```bash
-./config-manager.sh status
+bun run config status
 ```
 
   - Link all packages / remove all links:
 
 ```bash
-./config-manager.sh stow-all
-./config-manager.sh unstow-all
+bun run config stow-all
+bun run config unstow-all
 ```
 
   - Link, re-link, or remove a single package (example: fish):
 
 ```bash
-./config-manager.sh stow fish
-./config-manager.sh restow fish
-./config-manager.sh unstow fish
+bun run config stow fish
+bun run config restow fish
+bun run config unstow fish
 ```
 
   - Adopt existing local config into the repo (moves files, then stows):
 
 ```bash
-./config-manager.sh adopt fish
+bun run config adopt fish
 ```
 
-- Package synchronization (Homebrew + casks + Mac App Store):
+- Package synchronization:
   - Sync to match pkg-config.json:
 
 ```bash
-./pkg-sync.sh pkg-config.json
+bun run pkg-sync
 ```
 
   - Sync with purge (remove items not listed in config):
 
 ```bash
-jq '.config.purge = true' ~/.config/formalconf/pkg-config.json > ~/.config/formalconf/pkg-config-purge.json && \
-  ./pkg-sync.sh ~/.config/formalconf/pkg-config-purge.json && \
-  rm ~/.config/formalconf/pkg-config-purge.json
+bun run pkg-sync --purge
 ```
 
-  - Upgrade flows (no JSON needed):
+  - Generate/update package lockfile:
 
 ```bash
-# Upgrade everything automatically
-./pkg-sync.sh --upgrade-only
-
-# Upgrade interactively (choose packages/casks/MAS apps)
-./pkg-sync.sh --upgrade-interactive
+bun run pkg-lock
 ```
 
 - Theme management:
   - List themes and usage:
 
 ```bash
-./set-theme.sh
+bun run theme
 ```
 
-  - Apply a theme (example: tokyo-night):
+  - Apply a theme with variant (example: tokyo-night dark mode):
 
 ```bash
-./set-theme.sh tokyo-night
+bun run theme tokyo-night:dark
+```
+
+  - Install/update default templates:
+
+```bash
+bun run theme --install-templates
+```
+
+  - Check template versions:
+
+```bash
+bun run theme --template-status
+```
+
+  - Migrate legacy theme to JSON format:
+
+```bash
+bun run theme --migrate my-legacy-theme
 ```
 
 Notes
-- pkg-config.json is automatically symlinked to ~/.config/formalconf/pkg-config.json on first run of ./formalconf.sh (if not already present). You can edit it directly:
+- pkg-config.json is located at ~/.config/formalconf/pkg-config.json. You can edit it directly:
 
 ```bash
 ${EDITOR:-nano} ~/.config/formalconf/pkg-config.json
 ```
 
 High-level architecture
-- Interactive TUI (formalconf.sh)
+- Interactive TUI (src/cli/formalconf.tsx)
   - Entry point that presents menus for three domains: Config Manager, Package Sync, Set Theme
-  - Ensures ~/.config/formalconf exists and links pkg-config.json for convenient editing and reuse
-- Configuration management (config-manager.sh)
+  - Built with React and Ink for a rich terminal UI experience
+  - Ensures ~/.config/formalconf exists with required directories
+- Configuration management (src/cli/config-manager.ts)
   - Uses GNU Stow to create/remove symlinks from configs/ into the home directory
-  - Supports per-package operations (stow, restow, unstow), bulk operations (stow-all, unstow-all), status reporting, and adoption (migrates existing files into repo, then stows)
-- Package synchronization (pkg-sync.sh)
-  - JSON-driven via pkg-config.json with config, taps, packages (formulae), casks, and mas sections
-  - Modes: full sync (install), upgrade-only, upgrade-interactive; optional purge mode removes items not in config while protecting dependencies and system apps
-  - Handles taps, formulae, casks, and MAS apps in one unified flow; performs brew update when configured
-- Theme system (set-theme.sh)
-  - Applies themes by symlinking all files from themes/<theme>/ into ~/.config/formalconf/current/theme
-  - Each app (e.g., Ghostty, btop, Neovim) reads from that current/theme directory, enabling instant switching without copying files
+  - Supports per-package operations (stow, restow, unstow), bulk operations (stow-all, unstow-all), status reporting, and adoption
+- Package synchronization (src/cli/pkg-sync.ts)
+  - JSON-driven via pkg-config.json with version 2 format supporting cross-platform packages
+  - Handles Homebrew (taps, formulas, casks, MAS) on macOS
+  - Handles Pacman, AUR on Arch Linux; APT on Debian/Ubuntu; DNF on Fedora
+  - Cross-platform support for Flatpak and Cargo
+  - Optional purge mode removes items not in config while protecting dependencies
+- Theme system (src/cli/set-theme.ts)
+  - JSON-based themes with template engine for generating app configs
+  - Supports dark/light variants per theme
+  - Generates configs for 18+ applications (Ghostty, btop, Neovim, Waybar, Hyprland, etc.)
+  - Symlinks generated configs to ~/.config/formalconf/current/theme
 
 Repository structure (essentials only)
-- configs/: Per-application packages laid out in GNU Stow format (mirrors $HOME). Example packages include fish, neovim, tmux, ghostty, btop, aerospace, git
-- themes/: Theme variants (e.g., tokyo-night, matte-black, catppuccin, everforest) containing app-specific theme files (ghostty.conf, btop.theme, neovim.lua, etc.)
-- pkg-config.json: Declarative definition of taps, packages, casks, and MAS apps; includes config flags purge and autoUpdate
-- Core scripts: formalconf.sh, config-manager.sh, pkg-sync.sh, set-theme.sh
+- src/cli/: TypeScript entry points for CLI commands
+- src/components/: React/Ink UI components
+- src/lib/: Shared utilities (shell execution, paths, template engine, theme loading)
+- configs/: Per-application packages laid out in GNU Stow format (mirrors $HOME)
+- templates/themes/: JSON theme files (catppuccin, tokyo-night, nord, etc.)
+- templates/: Default template files for app config generation
 
 Troubleshooting (quick)
 - Stow conflicts (file already exists at target):
 
 ```bash
-./config-manager.sh unstow-all && ./config-manager.sh stow-all
+bun run config unstow-all && bun run config stow-all
 ```
 
 - Package sync issues:
 
 ```bash
-brew update && brew doctor
-./pkg-sync.sh ~/.config/formalconf/pkg-config.json
+brew update && brew doctor  # macOS
+bun run pkg-sync
+```
+
+- Type checking:
+
+```bash
+bun run typecheck
 ```
 
 Relevant guidance from CLAUDE.md (applied here)
-- Use ./formalconf.sh for the main interface; use ./config-manager.sh for direct GNU Stow ops; ./pkg-sync.sh for Homebrew/casks/MAS; ./set-theme.sh for themes
-- The system is symlink-first: both dotfile packages and themes rely on symlinks for instant switching
+- Use `bun run formalconf` for the main interface; use `bun run config` for direct GNU Stow ops; `bun run pkg-sync` for packages; `bun run theme` for themes
+- The system is symlink-first: dotfile packages use Stow symlinks, themes use template-generated configs
 - pkg-config.json is the single source of truth for package state; purge mode enforces exact alignment with config
