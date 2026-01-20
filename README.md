@@ -35,6 +35,7 @@
 - Application-specific theme configs (Ghostty, Btop, Neovim, etc.)
 - Theme discovery with metadata parsing (author, colors, light/dark mode)
 - Background support as part of themes
+- **Hook support** for custom scripts on theme change (wallpaper, notifications, etc.)
 
 ### **Interactive TUI**
 - **Beautiful React-based interface** powered by Ink
@@ -86,6 +87,8 @@ FormalConf expects your configuration files in `~/.config/formalconf/`:
 │   ├── tmux/          # Example: tmux config
 │   └── ...
 ├── themes/            # Omarchy-compatible themes
+├── hooks/             # Event hook scripts
+│   └── theme-change/  # Scripts run after theme changes
 ├── pkg-config.json    # Package sync configuration
 └── pkg-lock.json      # Package version lockfile
 ```
@@ -126,6 +129,36 @@ Define your packages in `pkg-config.json`:
 ### Theme Compatibility
 
 FormalConf supports [Omarchy themes](https://learn.omacom.io/2/the-omarchy-manual/52/themes). Place themes in `~/.config/formalconf/themes/` following the Omarchy theme structure.
+
+### Theme Hooks
+
+Run custom scripts when a theme is applied. Useful for setting wallpapers, sending notifications, or triggering other theme-dependent actions.
+
+**Setup:**
+```bash
+mkdir -p ~/.config/formalconf/hooks/theme-change
+```
+
+**Example hook** (`~/.config/formalconf/hooks/theme-change/set-wallpaper.sh`):
+```bash
+#!/bin/bash
+echo "Theme changed to: $FORMALCONF_THEME"
+# Set wallpaper from theme's backgrounds directory
+if [ -d "$FORMALCONF_THEME_DIR/backgrounds" ]; then
+  osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"$FORMALCONF_THEME_DIR/backgrounds/wallpaper.jpg\""
+fi
+```
+
+Make executable: `chmod +x ~/.config/formalconf/hooks/theme-change/set-wallpaper.sh`
+
+**Environment variables passed to hooks:**
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `FORMALCONF_THEME` | Theme name | `nord` |
+| `FORMALCONF_THEME_DIR` | Full theme directory path | `~/.config/formalconf/themes/nord` |
+
+Scripts run in alphabetical order. Failed hooks don't prevent theme application.
 
 ---
 

@@ -31,18 +31,20 @@ src/
 │   └── ui/               # UI elements (StatusIndicator, Divider)
 ├── hooks/            # React hooks (useTerminalSize, useSystemStatus)
 ├── lib/              # Shared utilities
-│   ├── paths.ts          # Path constants (CONFIG_DIR, THEMES_DIR)
+│   ├── paths.ts          # Path constants (CONFIG_DIR, THEMES_DIR, HOOKS_DIR)
 │   ├── shell.ts          # Command execution helpers
+│   ├── hooks.ts          # Hook execution for theme-change events
 │   ├── config.ts         # Config loading
 │   └── theme.ts          # Theme colors
 └── types/            # TypeScript type definitions
 ```
 
 ### Key Patterns
-- **User config location**: `~/.config/formalconf/` (configs, themes, pkg-config.json)
+- **User config location**: `~/.config/formalconf/` (configs, themes, hooks, pkg-config.json)
 - **CLI scripts**: Each CLI entry point in `src/cli/` can run standalone or be invoked from the TUI
 - **Shell execution**: Use `exec()` from `src/lib/shell.ts` for commands, `execLive()` for streaming output
 - **Path constants**: Import from `src/lib/paths.ts` - never hardcode paths
+- **Hooks**: User scripts in `~/.config/formalconf/hooks/<event>/` run after events (e.g., theme-change)
 
 ### Dependencies
 - Ink + React for TUI
