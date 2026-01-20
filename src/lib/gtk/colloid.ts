@@ -165,11 +165,8 @@ async function runColloidInstall(options: GtkInstallOptions): Promise<number> {
     args.push("-l");
   }
 
-  // Add tweaks (default to 'normal' for standard GNOME window buttons)
-  const tweaks = options.tweaks && options.tweaks.length > 0
-    ? options.tweaks
-    : ["normal"];
-  args.push("--tweaks", ...tweaks);
+  // Don't pass --tweaks - let it use the pre-patched _tweaks-temp.scss
+  // with our custom color palette import
 
   const result = await exec(args, COLLOID_DIR);
   return result.exitCode;
@@ -269,6 +266,25 @@ export async function applyGtkTheme(
   }
 
   const installedThemeName = getGtkThemeName(themeName, mode);
+
+  // Apply theme via gsettings (GTK 3)
+  const hasGsettings = await commandExists("gsettings");
+  if (hasGsettings) {
+    await exec([
+      "gsettings",
+      "set",
+      "org.gnome.desktop.interface",
+      "gtk-theme",
+      installedThemeName,
+    ]);
+    await exec([
+      "gsettings",
+      "set",
+      "org.gnome.desktop.interface",
+      "color-scheme",
+      `prefer-${mode}`,
+    ]);
+  }
 
   return {
     success: true,
