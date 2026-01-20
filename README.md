@@ -308,10 +308,11 @@ bun run typecheck               # Run TypeScript type checking
 ```
 src/
 ├── cli/              # Entry points (run directly with bun)
-│   ├── formalconf.tsx    # Main TUI app
-│   ├── config-manager.ts # Stow operations
-│   ├── pkg-sync.ts       # Homebrew/MAS sync
-│   └── set-theme.ts      # Theme switching
+│   ├── formalconf.tsx       # Main TUI app
+│   ├── config-manager.ts    # Stow operations
+│   ├── pkg-sync.ts          # Homebrew/MAS sync
+│   ├── set-theme.ts         # Theme switching
+│   └── template-manager.ts  # Template management
 ├── components/       # Ink React components
 │   ├── layout/           # Layout primitives (Panel, Breadcrumb, Footer)
 │   └── ui/               # UI elements (StatusIndicator, Divider)
