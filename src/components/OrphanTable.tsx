@@ -71,7 +71,7 @@ export function OrphanTable({ result, onAction, onDismiss }: OrphanTableProps) {
                 <Box key={`${pkg.type}-${pkg.name}`}>
                   <Text color={isSelected ? colors.primary : undefined}>
                     {isSelected ? "❯ " : "  "}
-                    {pkg.name.padEnd(30)}
+                    {(pkg.displayName || pkg.name).padEnd(30)}
                   </Text>
                   <Text
                     color={pkg.type === "formula" ? colors.info : colors.accent}

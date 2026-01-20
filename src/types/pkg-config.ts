@@ -175,10 +175,11 @@ export const SYSTEM_APP_IDS: readonly number[] = [
   1451685025, // WireGuard
 ] as const;
 
-export type OrphanPackageType = "formula" | "cask" | "pacman" | "aur" | "apt" | "dnf" | "flatpak";
+export type OrphanPackageType = "formula" | "cask" | "mas" | "pacman" | "aur" | "apt" | "dnf" | "flatpak";
 
 export interface OrphanedPackage {
   name: string;
+  displayName?: string; // Human-readable name (for MAS apps)
   type: OrphanPackageType;
   manager: PackageManagerType | "homebrew-casks";
 }

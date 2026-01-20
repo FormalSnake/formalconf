@@ -6,6 +6,7 @@ import {
   getAvailableManagers,
   HomebrewFormulas,
   HomebrewCasks,
+  MacAppStore,
 } from "./package-managers";
 import type { PackageManager } from "./package-managers";
 import type {
@@ -32,6 +33,8 @@ function getOrphanPackageType(
       return "formula";
     case "homebrew-casks":
       return "cask";
+    case "mas":
+      return "mas";
     case "pacman":
       return "pacman";
     case "aur":
@@ -188,6 +191,18 @@ export async function detectOrphanedPackages(): Promise<OrphanDetectionResult> {
     platform
   );
 
+  // Build MAS app name lookup for display (ID -> name)
+  const masAppNames = new Map<string, string>();
+  if (platform.os === "darwin") {
+    const mas = getPackageManager("mas") as MacAppStore;
+    if (await mas.isAvailable()) {
+      const apps = await mas.getInstalledApps();
+      for (const app of apps) {
+        masAppNames.set(String(app.id), app.name);
+      }
+    }
+  }
+
   for (const { manager, configuredPackages } of configuredPackagesPerManager) {
     totalConfigPackages += configuredPackages.size;
 
@@ -232,6 +247,8 @@ export async function detectOrphanedPackages(): Promise<OrphanDetectionResult> {
 
         orphans.push({
           name: installed,
+          displayName:
+            manager.type === "mas" ? masAppNames.get(installed) : undefined,
           type: getOrphanPackageType(manager.type),
           manager: manager.type,
         });
@@ -299,6 +316,16 @@ export async function addToConfig(pkg: OrphanedPackage): Promise<void> {
       if (!casks.includes(pkg.name)) {
         config.macos = config.macos || {};
         config.macos.casks = [...casks, pkg.name].sort();
+      }
+    } else if (pkg.type === "mas") {
+      const masApps = config.macos?.mas || {};
+      const appId = parseInt(pkg.name, 10);
+      const appName = pkg.displayName || pkg.name;
+      // Check if this ID is already in config
+      const existingIds = Object.values(masApps);
+      if (!existingIds.includes(appId)) {
+        config.macos = config.macos || {};
+        config.macos.mas = { ...masApps, [appName]: appId };
       }
     }
   } else {
