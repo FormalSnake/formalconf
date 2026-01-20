@@ -175,7 +175,38 @@ FormalConf uses JSON-based themes with a template engine for generating applicat
 }
 ```
 
-**Supported Template Targets (18):** Alacritty, Kitty, Ghostty, btop, Neovim, Waybar, Wofi, Walker, Hyprland, Hyprlock, Mako, SwayOSD, Lynk
+### Templates
+
+FormalConf ships with default templates for popular applications, but you can create your own or customize existing ones. Templates live in `~/.config/formalconf/templates/` and use a simple variable syntax:
+
+```toml
+# Example: ~/.config/formalconf/templates/alacritty.toml.template
+[colors.primary]
+background = "{{background}}"
+foreground = "{{foreground}}"
+
+[colors.cursor]
+cursor = "{{cursor}}"
+
+[colors.normal]
+black = "{{color0}}"
+red = "{{color1}}"
+green = "{{color2}}"
+# ... etc
+```
+
+**Template variables** are replaced with colors from the active theme's JSON. Available variables include:
+- `{{background}}`, `{{foreground}}`, `{{cursor}}`, `{{accent}}`, `{{border}}`
+- `{{color0}}` through `{{color15}}` (terminal palette)
+- `{{selection_background}}`, `{{selection_foreground}}`
+
+**Color modifiers** can transform colors: `{{background|lighten:10}}`, `{{accent|darken:20}}`, `{{color1|alpha:0.8}}`
+
+**Template modes:**
+- **Single-mode** (`app.conf.template`) - One template for both variants
+- **Partial-mode** (`app-dark.conf.template` + `app-light.conf.template`) - Separate templates per variant
+
+Run `bun run theme --install-templates` to install the default templates, then modify them as needed. Your customizations are preserved across updates.
 
 ### Theme Hooks
 
