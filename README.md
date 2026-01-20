@@ -11,6 +11,8 @@
 
 [Features](#features) • [Installation](#installation) • [Usage](#usage) • [Development](#development) • [Tech Stack](#tech-stack) • [Contributing](#contributing)
 
+**Reference:** [Example dotfiles](https://github.com/FormalSnake/dotfiles) - A complete working setup with configs, themes, and templates
+
 </div>
 
 ---
@@ -241,8 +243,6 @@ The `{{#if property}}...{{/if}}` block is only included when the property exists
 - **Partial-mode** (`app-dark.conf.template` + `app-light.conf.template`) - Separate templates per variant
 
 Run `bun run theme --install-templates` to install the default templates, then modify them as needed. Your customizations are preserved across updates.
-
-For a complete working example of configs, themes, and templates, see the [FormalSnake dotfiles](https://github.com/FormalSnake/dotfiles).
 
 ### Theme Hooks
 
