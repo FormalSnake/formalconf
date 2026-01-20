@@ -16,6 +16,7 @@
     "hyprland.conf.template": { "version": "1.0.0" },
     "hyprlock.conf.template": { "version": "1.0.0" },
     "mako.ini.template": { "version": "1.0.0" },
-    "swayosd.css.template": { "version": "1.0.0" }
+    "swayosd.css.template": { "version": "1.0.0" },
+    "lynk.css.template": { "version": "1.0.0" }
   }
 }

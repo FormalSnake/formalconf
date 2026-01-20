@@ -128,13 +128,19 @@ export async function renderTemplateFile(
     // Dual-mode template - needs both palettes
     const dualContext = buildDualModeContext(theme);
     if (!dualContext) {
-      // Fall back to single mode if theme doesn't have both palettes
-      const palette = theme[mode];
+      // Fall back: use available palette for both modes
+      // This ensures {{dark.xxx}} and {{light.xxx}} variables are replaced
+      const palette = theme[mode] ?? theme.dark ?? theme.light;
       if (!palette) {
-        throw new Error(`Theme '${theme.title}' does not have a ${mode} palette`);
+        throw new Error(`Theme '${theme.title}' does not have any palette`);
       }
       const context = buildTemplateContext(theme, palette, mode);
-      content = renderTemplate(templateContent, context);
+      const fallbackDualContext: DualModeTemplateContext = {
+        dark: context,
+        light: context,
+        theme: buildThemeMetadata(theme, mode),
+      };
+      content = renderDualModeTemplate(templateContent, fallbackDualContext);
     } else {
       content = renderDualModeTemplate(templateContent, dualContext);
     }

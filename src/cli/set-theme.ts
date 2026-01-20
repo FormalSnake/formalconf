@@ -13,6 +13,7 @@ import {
   THEME_TARGET_DIR,
   BACKGROUNDS_TARGET_DIR,
   GENERATED_DIR,
+  HOME_DIR,
   ensureConfigDir,
   ensureDir,
 } from "../lib/paths";
@@ -216,9 +217,22 @@ async function applyJsonTheme(
   // Generate and write theme configs
   const results = await generateThemeConfigs(theme, mode);
 
-  // Copy generated files to theme target directory
+  // Ghostty themes directory
+  const ghosttyThemesDir = join(HOME_DIR, ".config", "ghostty", "themes");
+
+  // Copy generated files to appropriate destinations
   for (const result of results) {
-    const targetPath = join(THEME_TARGET_DIR, basename(result.outputPath));
+    const filename = basename(result.outputPath);
+
+    // Ghostty theme files go to ~/.config/ghostty/themes/
+    if (filename === "formalconf-dark" || filename === "formalconf-light") {
+      await ensureDir(ghosttyThemesDir);
+      const targetPath = join(ghosttyThemesDir, filename);
+      copyFileSync(result.outputPath, targetPath);
+    }
+
+    // All files also go to the theme target directory
+    const targetPath = join(THEME_TARGET_DIR, filename);
     copyFileSync(result.outputPath, targetPath);
   }
 

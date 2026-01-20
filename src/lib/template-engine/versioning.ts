@@ -198,7 +198,7 @@ export async function unlockTemplate(templateName: string): Promise<void> {
  */
 export function getTemplateType(filename: string): TemplateType {
   // Dual-mode templates contain both light and dark
-  const dualModeTemplates = ["ghostty.conf.template", "neovim.lua.template"];
+  const dualModeTemplates = ["ghostty.conf.template", "neovim.lua.template", "lynk.css.template"];
   if (dualModeTemplates.includes(filename)) {
     return "dual";
   }
