@@ -60,6 +60,71 @@ function validateColor(value: unknown, path: string): ValidationError | null {
   return null;
 }
 
+function isValidUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function validateUrlArray(
+  arr: unknown,
+  path: string
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  if (!Array.isArray(arr)) {
+    errors.push({ path, message: "must be an array" });
+    return errors;
+  }
+
+  if (arr.length === 0) {
+    errors.push({ path, message: "must have at least one URL" });
+    return errors;
+  }
+
+  for (let i = 0; i < arr.length; i++) {
+    const item = arr[i];
+    if (typeof item !== "string") {
+      errors.push({ path: `${path}[${i}]`, message: "must be a string" });
+    } else if (!isValidUrl(item)) {
+      errors.push({ path: `${path}[${i}]`, message: "must be a valid http/https URL" });
+    }
+  }
+
+  return errors;
+}
+
+function validateWallpapers(
+  config: unknown,
+  path: string
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  if (typeof config !== "object" || config === null) {
+    errors.push({ path, message: "must be an object" });
+    return errors;
+  }
+
+  const obj = config as Record<string, unknown>;
+
+  // dark is required
+  if (!("dark" in obj)) {
+    errors.push({ path: `${path}.dark`, message: "is required" });
+  } else {
+    errors.push(...validateUrlArray(obj.dark, `${path}.dark`));
+  }
+
+  // light is optional
+  if ("light" in obj) {
+    errors.push(...validateUrlArray(obj.light, `${path}.light`));
+  }
+
+  return errors;
+}
+
 function validatePalette(
   palette: unknown,
   path: string
@@ -219,6 +284,11 @@ export function validateThemeJson(data: unknown): ValidationResult {
   // Validate gtk config
   if ("gtk" in obj) {
     errors.push(...validateGtkConfig(obj.gtk, "gtk"));
+  }
+
+  // Validate wallpapers config
+  if ("wallpapers" in obj) {
+    errors.push(...validateWallpapers(obj.wallpapers, "wallpapers"));
   }
 
   return {

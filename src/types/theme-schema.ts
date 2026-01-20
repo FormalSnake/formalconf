@@ -56,6 +56,13 @@ export interface ThemeGtkConfig {
   tweaks?: string[];
 }
 
+export interface ThemeWallpapers {
+  /** Dark mode wallpaper URLs (required if wallpapers defined) */
+  dark: string[];
+  /** Light mode wallpaper URLs (optional, falls back to dark) */
+  light?: string[];
+}
+
 export interface ThemeJson {
   /** Display name of the theme */
   title: string;
@@ -75,6 +82,8 @@ export interface ThemeJson {
   neovim?: ThemeNeovimConfig;
   /** GTK theme configuration (Phase 2) */
   gtk?: ThemeGtkConfig;
+  /** Wallpaper/background configuration */
+  wallpapers?: ThemeWallpapers;
 }
 
 /** Mode identifier for theme variants */

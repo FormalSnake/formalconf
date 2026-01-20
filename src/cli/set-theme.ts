@@ -49,6 +49,7 @@ import {
   generateThemeJson,
 } from "../lib/migration/extractor";
 import { writeFile } from "../lib/runtime";
+import { downloadThemeWallpapers } from "../lib/wallpaper";
 
 const colors = {
   red: "\x1b[0;31m",
@@ -236,6 +237,15 @@ async function applyJsonTheme(
     copyFileSync(result.outputPath, targetPath);
   }
 
+  // Download wallpapers if configured
+  let wallpaperPaths: string[] = [];
+  let wallpaperErrors: string[] = [];
+  if (theme.wallpapers) {
+    const wallpaperResult = await downloadThemeWallpapers(theme.wallpapers, mode);
+    wallpaperPaths = wallpaperResult.paths;
+    wallpaperErrors = wallpaperResult.errors;
+  }
+
   // Save device mapping if requested
   if (saveMapping) {
     await setDeviceTheme(identifier);
@@ -250,13 +260,26 @@ async function applyJsonTheme(
   if (theme.author) {
     output += `\nAuthor: ${theme.author}`;
   }
+  if (wallpaperPaths.length > 0) {
+    output += `\nWallpapers (${wallpaperPaths.length}):`;
+    for (const path of wallpaperPaths) {
+      output += `\n  ${path}`;
+    }
+  }
+  for (const error of wallpaperErrors) {
+    output += `\n  Warning: ${error}`;
+  }
 
   // Run theme-change hooks
-  const hookSummary = await runHooks("theme-change", {
+  const hookEnv: Record<string, string> = {
     FORMALCONF_THEME: identifier,
     FORMALCONF_THEME_MODE: mode,
     FORMALCONF_THEME_FILE: themePath,
-  });
+  };
+  if (wallpaperPaths.length > 0) {
+    hookEnv.FORMALCONF_WALLPAPER_PATHS = wallpaperPaths.join(":");
+  }
+  const hookSummary = await runHooks("theme-change", hookEnv);
 
   if (hookSummary.executed > 0) {
     output += `\nHooks: ${hookSummary.succeeded}/${hookSummary.executed} succeeded`;
@@ -414,6 +437,20 @@ async function showThemeInfo(themeIdentifier: string): Promise<void> {
       console.log(`  Colorscheme: ${theme.neovim.colorscheme}`);
       if (theme.neovim.light_colorscheme) {
         console.log(`  Light colorscheme: ${theme.neovim.light_colorscheme}`);
+      }
+    }
+
+    if (theme.wallpapers) {
+      console.log(`\n${colors.green}Wallpapers:${colors.reset}`);
+      console.log(`  Dark (${theme.wallpapers.dark.length}):`);
+      for (const url of theme.wallpapers.dark) {
+        console.log(`    ${url}`);
+      }
+      if (theme.wallpapers.light && theme.wallpapers.light.length > 0) {
+        console.log(`  Light (${theme.wallpapers.light.length}):`);
+        for (const url of theme.wallpapers.light) {
+          console.log(`    ${url}`);
+        }
       }
     }
     return;
