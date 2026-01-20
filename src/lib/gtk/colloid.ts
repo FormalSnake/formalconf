@@ -94,6 +94,8 @@ async function cloneColloidRepo(): Promise<boolean> {
  * Update existing Colloid repository
  */
 async function updateColloidRepo(): Promise<boolean> {
+  // Reset our modified palette file before pulling (we'll overwrite it anyway)
+  await exec(["git", "checkout", "--", "src/sass/_color-palette-default.scss"], COLLOID_DIR);
   const result = await exec(["git", "pull", "--rebase"], COLLOID_DIR);
   return result.success;
 }
@@ -113,6 +115,10 @@ export async function ensureColloidRepo(): Promise<boolean> {
 
 /**
  * Write custom color palette to Colloid's SCSS directory
+ *
+ * We overwrite _color-palette-default.scss because install.sh copies
+ * _tweaks.scss to _tweaks-temp.scss which imports color-palette-default.
+ * This ensures our colors are used without needing to patch the tweaks file.
  */
 async function writeCustomPalette(
   palette: ThemeColorPalette,
@@ -123,30 +129,12 @@ async function writeCustomPalette(
     COLLOID_DIR,
     "src",
     "sass",
-    "_color-palette-formalconf.scss"
+    "_color-palette-default.scss"
   );
 
   await writeFile(palettePath, scss);
 }
 
-/**
- * Patch Colloid's tweaks file to use our custom palette
- *
- * We modify _tweaks-temp.scss to import our palette and set the tweak flag.
- */
-async function patchTweaksFile(themeName: string): Promise<void> {
-  const tweaksContent = `// FormalConf theme: ${themeName}
-// Auto-patched to use custom color palette
-
-@import 'color-palette-formalconf';
-
-$tweaks: true;
-$colorscheme: true;
-`;
-
-  const tweaksPath = join(COLLOID_DIR, "src", "sass", "_tweaks-temp.scss");
-  await writeFile(tweaksPath, tweaksContent);
-}
 
 /**
  * Run Colloid install.sh script
@@ -165,8 +153,11 @@ async function runColloidInstall(options: GtkInstallOptions): Promise<number> {
     args.push("-l");
   }
 
-  // Don't pass --tweaks - let it use the pre-patched _tweaks-temp.scss
-  // with our custom color palette import
+  // Use blackness tweak for dark mode to get proper dark backgrounds
+  // This makes Colloid use grey-900 instead of grey-700 for window_bg
+  if (options.mode === "dark") {
+    args.push("--tweaks", "black");
+  }
 
   const result = await exec(args, COLLOID_DIR);
   return result.exitCode;
@@ -174,13 +165,16 @@ async function runColloidInstall(options: GtkInstallOptions): Promise<number> {
 
 /**
  * Get the name of the installed GTK theme
+ *
+ * Colloid's install.sh uses the -n argument as-is, then appends the color variant.
+ * So -n "formalconf-catppuccin" -c dark becomes "formalconf-catppuccin-Dark"
  */
 function getGtkThemeName(
   themeName: string,
   mode: ThemeMode
 ): string {
   const modeCapitalized = mode === "dark" ? "Dark" : "Light";
-  return `Colloid-formalconf-${themeName}-${modeCapitalized}`;
+  return `formalconf-${themeName}-${modeCapitalized}`;
 }
 
 /**
@@ -237,11 +231,8 @@ export async function applyGtkTheme(
     };
   }
 
-  // Write custom palette
+  // Write custom palette (overwrites _color-palette-default.scss)
   await writeCustomPalette(palette, mode);
-
-  // Patch tweaks file
-  await patchTweaksFile(themeName);
 
   // Get GTK config from theme (optional)
   const gtkConfig = theme.gtk || {};

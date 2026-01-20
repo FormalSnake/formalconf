@@ -97,13 +97,14 @@ export function createColloidPalette(
 ): ColloidPalette {
   const isDark = mode === "dark";
 
-  // Generate greyscale from background to foreground
-  const grey = isDark
-    ? interpolateGreyscale(palette.background, palette.foreground)
-    : interpolateGreyscale(palette.foreground, palette.background);
-
-  // For light mode, reverse the greyscale so grey-050 is still lightest
-  const orderedGrey = isDark ? grey : [...grey].reverse();
+  // Greyscale must always go from lightest (grey-050) to darkest (grey-950)
+  // This matches Colloid's expected structure where SCSS picks appropriate
+  // greys based on light/dark variant
+  // In dark mode: foreground is light, background is dark
+  // In light mode: background is light, foreground is dark
+  const orderedGrey = isDark
+    ? interpolateGreyscale(palette.foreground, palette.background)
+    : interpolateGreyscale(palette.background, palette.foreground);
 
   // Get accent color (fallback to color4/blue if not defined)
   const accentBase = palette.accent || palette.color4;
@@ -154,6 +155,10 @@ export function generateColloidScss(
 ): string {
   const colloid = createColloidPalette(palette, mode);
 
+  // Derive missing colors by interpolation
+  const orange = interpolateColor(palette.color1, palette.color3, 0.5); // red + yellow
+  const pink = interpolateColor(palette.color1, palette.color5, 0.4); // red + purple
+
   // Grey scale variable names in Colloid
   const greyNames = [
     "050",
@@ -180,7 +185,39 @@ export function generateColloidScss(
   let scss = `// FormalConf Generated Color Palette
 // Auto-generated - do not edit manually
 
-// Greyscale (interpolated from theme background/foreground)
+// Red
+$red-light: ${colloid.red.light};
+$red-dark: ${colloid.red.dark};
+
+// Pink
+$pink-light: ${lighten(pink, 10)};
+$pink-dark: ${darken(pink, 10)};
+
+// Purple
+$purple-light: ${colloid.purple.light};
+$purple-dark: ${colloid.purple.dark};
+
+// Blue
+$blue-light: ${colloid.blue.light};
+$blue-dark: ${colloid.blue.dark};
+
+// Teal
+$teal-light: ${colloid.teal.light};
+$teal-dark: ${colloid.teal.dark};
+
+// Green
+$green-light: ${colloid.green.light};
+$green-dark: ${colloid.green.dark};
+
+// Yellow
+$yellow-light: ${colloid.yellow.light};
+$yellow-dark: ${colloid.yellow.dark};
+
+// Orange
+$orange-light: ${lighten(orange, 10)};
+$orange-dark: ${darken(orange, 10)};
+
+// Grey
 `;
 
   // Generate greyscale variables
@@ -189,34 +226,23 @@ export function generateColloidScss(
   }
 
   scss += `
-// Base colors
-$black: ${colloid.black};
+// White
 $white: ${colloid.white};
 
-// Semantic colors - dark variants
-$red-dark: ${colloid.red.dark};
-$green-dark: ${colloid.green.dark};
-$yellow-dark: ${colloid.yellow.dark};
-$blue-dark: ${colloid.blue.dark};
-$purple-dark: ${colloid.purple.dark};
-$teal-dark: ${colloid.teal.dark};
+// Black
+$black: ${colloid.black};
 
-// Semantic colors - light variants
-$red-light: ${colloid.red.light};
-$green-light: ${colloid.green.light};
-$yellow-light: ${colloid.yellow.light};
-$blue-light: ${colloid.blue.light};
-$purple-light: ${colloid.purple.light};
-$teal-light: ${colloid.teal.light};
+// Button (window controls)
+$button-close: ${palette.color1};
+$button-max: ${palette.color2};
+$button-min: ${palette.color3};
 
-// Accent colors (primary buttons, links, highlights)
-$default-dark: ${colloid.accent.dark};
-$default-light: ${colloid.accent.light};
+// Link
 $links: ${palette.accent || palette.color4};
 
-// Backgrounds
-$background: ${palette.background};
-$foreground: ${palette.foreground};
+// Theme (accent color)
+$default-light: ${colloid.accent.light};
+$default-dark: ${colloid.accent.dark};
 `;
 
   return scss;
