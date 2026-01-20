@@ -59,7 +59,7 @@ async function markSetupReminderShown(): Promise<void> {
  * Get the base theme name and copy its SVG for widget styling
  */
 function getBaseTheme(mode: ThemeMode): string {
-  return mode === "dark" ? "KvGnomeDark" : "KvGnome";
+  return mode === "dark" ? "KvFlat" : "KvFlatLight";
 }
 
 /**

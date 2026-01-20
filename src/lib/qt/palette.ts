@@ -138,7 +138,7 @@ export function generateKvantumConfig(
   const kv = createKvantumPalette(palette, mode);
 
   // Default base theme based on mode
-  const inheritFrom = baseTheme || (mode === "dark" ? "KvGnomeDark" : "KvGnome");
+  const inheritFrom = baseTheme || (mode === "dark" ? "KvFlat" : "KvFlatLight");
 
   // Dimmed text color for inactive states
   const textDimmed = mode === "dark"
