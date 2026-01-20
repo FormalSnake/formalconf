@@ -688,7 +688,7 @@ export async function runPkgSync(args: string[]): Promise<PkgSyncResult> {
   return { output: "Sync complete", success: true };
 }
 
-async function main() {
+export async function main() {
   const { values, positionals } = parseArgs({
     args: process.argv.slice(2),
     options: {

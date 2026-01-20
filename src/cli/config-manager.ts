@@ -274,7 +274,7 @@ export async function runConfigManager(args: string[]): Promise<ConfigManagerRes
   return { output, success };
 }
 
-async function main() {
+export async function main() {
   const { positionals } = parseArgs({
     args: process.argv.slice(2),
     allowPositionals: true,

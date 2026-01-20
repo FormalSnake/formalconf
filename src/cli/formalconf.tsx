@@ -1,3 +1,4 @@
+import { parseArgs } from "node:util";
 import React, { useState, useEffect } from "react";
 import { render, useApp, useInput } from "ink";
 import { Spinner } from "@inkjs/ui";
@@ -11,6 +12,26 @@ import { PackageMenu } from "../components/menus/PackageMenu";
 import { ThemeMenu } from "../components/menus/ThemeMenu";
 import { ensureConfigDir, isFirstRun } from "../lib/paths";
 import { checkPrerequisites } from "../lib/runtime";
+
+function printHelp() {
+  console.log(`
+FormalConf - Dotfiles Management TUI
+
+Usage:
+  formalconf                    Launch interactive TUI
+  formalconf theme <name>       Apply a theme (e.g., nord:dark)
+  formalconf config <cmd>       Config management (stow, unstow, status, list)
+  formalconf pkg-sync [flags]   Sync packages from pkg-config.json
+
+Options:
+  -h, --help                    Show this help message
+
+Examples:
+  formalconf theme nord:dark
+  formalconf config stow nvim
+  formalconf pkg-sync --purge
+`);
+}
 
 type AppState = "loading" | "error" | "onboarding" | "ready";
 
@@ -82,4 +103,63 @@ function App() {
   );
 }
 
-render(<App />);
+async function main() {
+  const { positionals, values } = parseArgs({
+    args: process.argv.slice(2),
+    options: {
+      help: { type: "boolean", short: "h" },
+    },
+    allowPositionals: true,
+    strict: false,
+  });
+
+  const [subcommand] = positionals;
+
+  if (values.help && !subcommand) {
+    printHelp();
+    process.exit(0);
+  }
+
+  if (subcommand) {
+    // Map subcommand to script name for isMainModule checks
+    const scriptMap: Record<string, string> = {
+      theme: "set-theme",
+      config: "config-manager",
+      "pkg-sync": "pkg-sync",
+    };
+
+    const scriptName = scriptMap[subcommand];
+    if (!scriptName) {
+      console.error(`Unknown subcommand: ${subcommand}`);
+      printHelp();
+      process.exit(1);
+    }
+
+    // Update argv so subcommand script sees its args at slice(2)
+    process.argv = [process.argv[0], scriptName, ...process.argv.slice(3)];
+
+    switch (subcommand) {
+      case "theme": {
+        const { main } = await import("./set-theme");
+        await main();
+        break;
+      }
+      case "config": {
+        const { main } = await import("./config-manager");
+        await main();
+        break;
+      }
+      case "pkg-sync": {
+        const { main } = await import("./pkg-sync");
+        await main();
+        break;
+      }
+    }
+    return;
+  }
+
+  // No subcommand - launch TUI
+  render(<App />);
+}
+
+main();

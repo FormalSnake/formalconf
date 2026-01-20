@@ -758,7 +758,7 @@ async function showTemplateStatus(): Promise<void> {
   }
 }
 
-async function main() {
+export async function main() {
   const { positionals, values } = parseArgs({
     args: process.argv.slice(2),
     options: {
