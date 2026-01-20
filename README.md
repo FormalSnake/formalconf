@@ -11,7 +11,7 @@
 
 [Features](#features) • [Installation](#installation) • [Usage](#usage) • [Development](#development) • [Tech Stack](#tech-stack) • [Contributing](#contributing)
 
-**Reference:** [Example dotfiles](https://github.com/FormalSnake/dotfiles) - A complete working setup with configs, themes, and templates
+**Reference:** [My dotfiles](https://github.com/FormalSnake/dotfiles) - A complete working setup with configs, themes, and templates
 
 </div>
 
