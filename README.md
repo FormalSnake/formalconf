@@ -295,6 +295,11 @@ bun run theme <name>:<variant>  # Apply a theme (e.g., catppuccin:dark, tokyo-ni
 bun run theme --install-templates  # Install/update default templates
 bun run theme --template-status    # Check template versions
 bun run theme --migrate <name>     # Migrate legacy theme to JSON format
+bun run template update --all   # Update all templates (persists mode metadata)
+bun run template list           # List installed templates with their type
+bun run template check          # Check for available template updates
+bun run template lock <name>    # Lock a template from updates
+bun run template unlock <name>  # Unlock a template for updates
 bun run typecheck               # Run TypeScript type checking
 ```
 
