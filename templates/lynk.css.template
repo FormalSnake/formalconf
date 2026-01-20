@@ -12,7 +12,7 @@
   --secondary: {{light.color7}};
   --secondary-foreground: {{light.foreground}};
   --muted: {{light.color7}};
-  --muted-foreground: {{light.color8}};
+  --muted-foreground: color-mix(in srgb, {{light.foreground}} 60%, {{light.background}});
   --accent: {{light.color7}};
   --accent-foreground: {{light.foreground}};
   --destructive: {{light.color1}};
@@ -47,7 +47,7 @@
   --secondary: {{dark.color0}};
   --secondary-foreground: {{dark.foreground}};
   --muted: {{dark.color0}};
-  --muted-foreground: {{dark.color8}};
+  --muted-foreground: color-mix(in srgb, {{dark.foreground}} 60%, {{dark.background}});
   --accent: {{dark.color0}};
   --accent-foreground: {{dark.foreground}};
   --destructive: {{dark.color1}};
