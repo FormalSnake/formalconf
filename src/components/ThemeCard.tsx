@@ -7,13 +7,15 @@ interface ThemeCardProps {
   theme: Theme;
   isSelected: boolean;
   width: number;
+  isDeviceTheme?: boolean;
 }
 
-export function ThemeCard({ theme, isSelected, width }: ThemeCardProps) {
+export function ThemeCard({ theme, isSelected, width, isDeviceTheme }: ThemeCardProps) {
   const borderColor = isSelected ? colors.accent : colors.border;
   const nameColor = isSelected ? colors.primary : colors.text;
 
   const indicators: string[] = [];
+  if (isDeviceTheme) indicators.push("device");
   if (theme.hasBackgrounds) indicators.push("bg");
   if (theme.isLightMode) indicators.push("light");
 

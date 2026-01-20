@@ -8,6 +8,7 @@ export interface UseThemeGridOptions {
   layoutOverhead?: number;
   minCardWidth?: number;
   onSelect?: (index: number) => void;
+  onSelectAndSave?: (index: number) => void;
   onBack?: () => void;
   enabled?: boolean;
 }
@@ -32,6 +33,7 @@ export function useThemeGrid({
   layoutOverhead = 20,
   minCardWidth = 28,
   onSelect,
+  onSelectAndSave,
   onBack,
   enabled = true,
 }: UseThemeGridOptions): UseThemeGridReturn {
@@ -87,8 +89,12 @@ export function useThemeGrid({
         setSelectedIndex(prevIndex);
       }
     }
-    if (key.return && onSelect) {
-      onSelect(selectedIndex);
+    if (key.return) {
+      if (key.shift && onSelectAndSave) {
+        onSelectAndSave(selectedIndex);
+      } else if (onSelect) {
+        onSelect(selectedIndex);
+      }
     }
   });
 

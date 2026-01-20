@@ -13,6 +13,7 @@ import { THEMES_DIR } from "../../lib/paths";
 import { parseTheme } from "../../lib/theme-parser";
 import { colors } from "../../lib/theme";
 import { runSetTheme } from "../../cli/set-theme";
+import { getDeviceHostname, getDeviceTheme } from "../../lib/theme-config";
 import type { Theme } from "../../types/theme";
 
 interface ThemeMenuProps {
@@ -22,11 +23,15 @@ interface ThemeMenuProps {
 export function ThemeMenu({ onBack }: ThemeMenuProps) {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deviceTheme, setDeviceThemeName] = useState<string | null>(null);
   const { state, output, success, isRunning, isResult, execute, reset } = useMenuAction();
+
+  const hostname = getDeviceHostname();
 
   const grid = useThemeGrid({
     itemCount: themes.length,
-    onSelect: (index) => applyTheme(themes[index]),
+    onSelect: (index) => applyTheme(themes[index], false),
+    onSelectAndSave: (index) => applyTheme(themes[index], true),
     onBack,
     enabled: state === "menu" && !loading && themes.length > 0,
   });
@@ -51,15 +56,19 @@ export function ThemeMenu({ onBack }: ThemeMenuProps) {
       }
 
       setThemes(loadedThemes);
+      setDeviceThemeName(getDeviceTheme());
       setLoading(false);
     }
 
     loadThemes();
   }, []);
 
-  const applyTheme = async (theme: Theme) => {
+  const applyTheme = async (theme: Theme, saveAsDeviceDefault: boolean) => {
     const themeName = theme.path.split("/").pop()!;
-    await execute(() => runSetTheme(themeName));
+    await execute(() => runSetTheme(themeName, saveAsDeviceDefault));
+    if (saveAsDeviceDefault) {
+      setDeviceThemeName(themeName);
+    }
   };
 
   const visibleThemes = useMemo(() => {
@@ -115,6 +124,7 @@ export function ThemeMenu({ onBack }: ThemeMenuProps) {
             theme={theme}
             isSelected={grid.visibleStartIndex + index === grid.selectedIndex}
             width={grid.cardWidth}
+            isDeviceTheme={theme.name === deviceTheme}
           />
         ))}
       </Box>
@@ -124,8 +134,9 @@ export function ThemeMenu({ onBack }: ThemeMenuProps) {
           {grid.totalRows - grid.scrollOffset - grid.visibleRows > 1 ? "s" : ""}
         </Text>
       )}
-      <Box marginTop={1}>
-        <Text dimColor>←→↑↓/hjkl navigate • Enter select • Esc back</Text>
+      <Box marginTop={1} flexDirection="column">
+        <Text dimColor>←→↑↓/hjkl navigate • Enter apply • Shift+Enter save as device default • Esc back</Text>
+        <Text dimColor>Device: {hostname}</Text>
       </Box>
     </Panel>
   );

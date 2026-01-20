@@ -5,12 +5,20 @@ import {
   THEMES_DIR,
   THEME_TARGET_DIR,
   BACKGROUNDS_TARGET_DIR,
-  HOME_DIR,
   ensureConfigDir,
   ensureDir,
 } from "../lib/paths";
 
 import { parseTheme } from "../lib/theme-parser";
+import {
+  getDeviceHostname,
+  getDeviceTheme,
+  setDeviceTheme,
+  setDefaultTheme,
+  clearDeviceTheme,
+  listDeviceMappings,
+  getDefaultTheme,
+} from "../lib/theme-config";
 import type { Theme } from "../types/theme";
 
 const colors = {
@@ -65,7 +73,10 @@ function createSymlink(source: string, target: string): void {
   symlinkSync(source, target);
 }
 
-async function applyTheme(themeName: string): Promise<{ output: string; success: boolean }> {
+async function applyTheme(
+  themeName: string,
+  saveMapping: boolean = false
+): Promise<{ output: string; success: boolean }> {
   const themeDir = join(THEMES_DIR, themeName);
 
   if (!existsSync(themeDir)) {
@@ -105,7 +116,15 @@ async function applyTheme(themeName: string): Promise<{ output: string; success:
     createSymlink(backgroundsSource, BACKGROUNDS_TARGET_DIR);
   }
 
+  // Save device mapping if requested
+  if (saveMapping) {
+    await setDeviceTheme(themeName);
+  }
+
   let output = `Theme '${theme.name}' applied successfully`;
+  if (saveMapping) {
+    output += ` (saved as device preference for '${getDeviceHostname()}')`;
+  }
   if (theme.metadata?.author) {
     output += `\nAuthor: ${theme.metadata.author}`;
   }
@@ -164,60 +183,187 @@ export interface SetThemeResult {
   success: boolean;
 }
 
-export async function runSetTheme(themeName: string): Promise<SetThemeResult> {
-  return applyTheme(themeName);
+export async function runSetTheme(
+  themeName: string,
+  saveMapping: boolean = false
+): Promise<SetThemeResult> {
+  return applyTheme(themeName, saveMapping);
 }
 
 export { listThemes };
+
+function showDeviceMappings(): void {
+  const mappings = listDeviceMappings();
+  const defaultTheme = getDefaultTheme();
+  const currentDevice = getDeviceHostname();
+
+  console.log(`${colors.cyan}Device Theme Mappings${colors.reset}`);
+  console.log(`Current device: ${colors.blue}${currentDevice}${colors.reset}\n`);
+
+  if (defaultTheme) {
+    console.log(`Default theme: ${colors.green}${defaultTheme}${colors.reset}\n`);
+  }
+
+  if (mappings.length === 0) {
+    console.log(`${colors.dim}No device-specific themes configured.${colors.reset}`);
+    return;
+  }
+
+  console.log("Configured devices:");
+  for (const mapping of mappings) {
+    const marker = mapping.isCurrent ? ` ${colors.green}(current)${colors.reset}` : "";
+    const date = new Date(mapping.setAt).toLocaleDateString();
+    console.log(
+      `  ${colors.blue}•${colors.reset} ${mapping.device}${marker}: ${mapping.theme} ${colors.dim}(set ${date})${colors.reset}`
+    );
+  }
+}
+
+async function showThemeList(): Promise<void> {
+  const themes = await listThemes();
+  const deviceTheme = getDeviceTheme();
+
+  if (themes.length === 0) {
+    console.log(`${colors.yellow}No themes available.${colors.reset}`);
+    console.log(`This system is compatible with omarchy themes.`);
+    console.log(
+      `\nAdd themes to: ${colors.cyan}~/.config/formalconf/themes/${colors.reset}`
+    );
+    return;
+  }
+
+  console.log(`${colors.cyan}Usage: formalconf theme <theme-name>${colors.reset}`);
+  console.log(`       formalconf theme <theme-name> --save  ${colors.dim}(save as device preference)${colors.reset}`);
+  console.log(`       formalconf theme --apply              ${colors.dim}(apply device's theme)${colors.reset}`);
+  console.log(`       formalconf theme --list-devices       ${colors.dim}(show device mappings)${colors.reset}`);
+  console.log(`       formalconf theme --default <name>     ${colors.dim}(set default theme)${colors.reset}`);
+  console.log(`       formalconf theme --clear-default      ${colors.dim}(remove default theme)${colors.reset}`);
+  console.log(`       formalconf theme --clear              ${colors.dim}(remove device mapping)${colors.reset}`);
+  console.log(`       formalconf theme --info <theme-name>  ${colors.dim}(show theme details)${colors.reset}\n`);
+
+  console.log("Available themes:");
+  for (const theme of themes) {
+    const extras = [];
+    if (theme.hasBackgrounds) extras.push("wallpapers");
+    if (theme.isLightMode) extras.push("light");
+    if (theme.name === deviceTheme) extras.push("device");
+    const suffix = extras.length
+      ? ` ${colors.dim}(${extras.join(", ")})${colors.reset}`
+      : "";
+    console.log(`  ${colors.blue}•${colors.reset} ${theme.name}${suffix}`);
+  }
+}
 
 async function main() {
   const { positionals, values } = parseArgs({
     args: process.argv.slice(2),
     options: {
       info: { type: "boolean", short: "i" },
+      save: { type: "boolean", short: "s" },
+      apply: { type: "boolean", short: "a" },
+      "list-devices": { type: "boolean", short: "l" },
+      default: { type: "string", short: "d" },
+      "clear-default": { type: "boolean" },
+      clear: { type: "boolean", short: "c" },
     },
     allowPositionals: true,
   });
 
   const [themeName] = positionals;
 
-  if (!themeName) {
-    const themes = await listThemes();
-
-    if (themes.length === 0) {
-      console.log(`${colors.yellow}No themes available.${colors.reset}`);
-      console.log(`This system is compatible with omarchy themes.`);
-      console.log(
-        `\nAdd themes to: ${colors.cyan}~/.config/formalconf/themes/${colors.reset}`
-      );
-      process.exit(0);
-    }
-
-    console.log(`${colors.cyan}Usage: formalconf theme <theme-name>${colors.reset}`);
-    console.log(`       formalconf theme --info <theme-name>\n`);
-    console.log("Available themes:");
-    for (const theme of themes) {
-      const extras = [];
-      if (theme.hasBackgrounds) extras.push("wallpapers");
-      if (theme.isLightMode) extras.push("light");
-      const suffix = extras.length
-        ? ` ${colors.dim}(${extras.join(", ")})${colors.reset}`
-        : "";
-      console.log(`  ${colors.blue}•${colors.reset} ${theme.name}${suffix}`);
-    }
-    process.exit(0);
+  // Handle --list-devices
+  if (values["list-devices"]) {
+    showDeviceMappings();
+    return;
   }
 
-  if (values.info) {
-    await showThemeInfo(themeName);
-  } else {
-    const result = await applyTheme(themeName);
+  // Handle --clear
+  if (values.clear) {
+    const deviceTheme = getDeviceTheme();
+    if (!deviceTheme) {
+      console.log(`${colors.yellow}No theme configured for this device.${colors.reset}`);
+      return;
+    }
+    await clearDeviceTheme();
+    console.log(
+      `${colors.green}Removed theme mapping for '${getDeviceHostname()}'.${colors.reset}`
+    );
+    return;
+  }
+
+  // Handle --clear-default
+  if (values["clear-default"]) {
+    await setDefaultTheme(null);
+    console.log(`${colors.green}Default theme cleared.${colors.reset}`);
+    return;
+  }
+
+  // Handle --default
+  if (values.default !== undefined) {
+    const themeDir = join(THEMES_DIR, values.default);
+    if (!existsSync(themeDir)) {
+      console.error(
+        `${colors.red}Error: Theme '${values.default}' not found${colors.reset}`
+      );
+      process.exit(1);
+    }
+    await setDefaultTheme(values.default);
+    console.log(
+      `${colors.green}Default theme set to '${values.default}'.${colors.reset}`
+    );
+    return;
+  }
+
+  // Handle --apply (apply device's configured theme)
+  if (values.apply) {
+    const deviceTheme = getDeviceTheme();
+    if (!deviceTheme) {
+      console.log(
+        `${colors.yellow}No theme configured for device '${getDeviceHostname()}'.${colors.reset}`
+      );
+      console.log(`Use 'formalconf theme <name> --save' to set a device preference.`);
+      return;
+    }
+    const result = await applyTheme(deviceTheme);
     console.log(
       result.success
         ? `${colors.green}${result.output}${colors.reset}`
         : `${colors.red}${result.output}${colors.reset}`
     );
+    return;
   }
+
+  // No theme name provided - try to apply device theme or show list
+  if (!themeName) {
+    const deviceTheme = getDeviceTheme();
+    if (deviceTheme) {
+      // Auto-apply device theme
+      const result = await applyTheme(deviceTheme);
+      console.log(
+        result.success
+          ? `${colors.green}${result.output}${colors.reset}`
+          : `${colors.red}${result.output}${colors.reset}`
+      );
+    } else {
+      // Show theme list
+      await showThemeList();
+    }
+    return;
+  }
+
+  // Handle --info
+  if (values.info) {
+    await showThemeInfo(themeName);
+    return;
+  }
+
+  // Apply theme (with optional --save)
+  const result = await applyTheme(themeName, values.save ?? false);
+  console.log(
+    result.success
+      ? `${colors.green}${result.output}${colors.reset}`
+      : `${colors.red}${result.output}${colors.reset}`
+  );
 }
 
 // Only run main when executed directly
