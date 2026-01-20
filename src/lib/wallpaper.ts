@@ -7,6 +7,7 @@
 import { existsSync, readdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { BACKGROUNDS_TARGET_DIR, ensureDir } from "./paths";
+import { writeBuffer } from "./runtime";
 import type { ThemeWallpapers } from "../types/theme-schema";
 
 export interface WallpaperResult {
@@ -128,7 +129,7 @@ export async function downloadWallpaper(
     const ext = getExtension(url, contentType);
     const outputPath = join(BACKGROUNDS_TARGET_DIR, `${filename}.${ext}`);
 
-    await Bun.write(outputPath, arrayBuffer);
+    await writeBuffer(outputPath, arrayBuffer);
 
     return { success: true, path: outputPath };
   } catch (err) {

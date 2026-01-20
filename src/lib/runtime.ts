@@ -257,6 +257,16 @@ export async function writeFile(path: string, content: string): Promise<void> {
   await nodeWriteFile(path, content, "utf-8");
 }
 
+// Binary file write abstraction
+export async function writeBuffer(path: string, data: ArrayBuffer | Buffer): Promise<void> {
+  if (isBun) {
+    await Bun.write(path, data);
+    return;
+  }
+  const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
+  await nodeWriteFile(path, buffer);
+}
+
 // mkdir abstraction
 export async function ensureDir(path: string): Promise<void> {
   if (isBun) {
