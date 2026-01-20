@@ -16,22 +16,15 @@ import type {
   ThemeMode,
 } from "../../types/theme-schema";
 import type {
-  TemplateContext,
-  DualModeTemplateContext,
   TemplateThemeMetadata,
   TemplateGtkMetadata,
   TemplateFile,
   RenderResult,
 } from "./types";
-import { renderTemplate, renderDualModeTemplate } from "./parser";
+import { renderTemplate, renderDualModeTemplate, type ExtendedTemplateContext, type ExtendedDualModeContext } from "./parser";
 import {
   listInstalledTemplates,
-  getTemplateType,
 } from "./versioning";
-import {
-  generateNeovimConfig,
-  hasNeovimConfig,
-} from "../neovim/generator";
 
 /**
  * Builds theme metadata for template context
@@ -73,8 +66,8 @@ export function buildTemplateContext(
   theme: ThemeJson,
   palette: ThemeColorPalette,
   mode: ThemeMode
-): TemplateContext {
-  return {
+): ExtendedTemplateContext {
+  const context: ExtendedTemplateContext = {
     // 16 ANSI colors
     color0: hexToColorVariable(palette.color0),
     color1: hexToColorVariable(palette.color1),
@@ -113,6 +106,18 @@ export function buildTemplateContext(
     // Mode
     mode,
   };
+
+  // Add neovim config if present
+  if (theme.neovim) {
+    context.neovim = {
+      repo: theme.neovim.repo,
+      colorscheme: theme.neovim.colorscheme,
+      light_colorscheme: theme.neovim.light_colorscheme,
+      opts: theme.neovim.opts,
+    };
+  }
+
+  return context;
 }
 
 /**
@@ -120,7 +125,7 @@ export function buildTemplateContext(
  */
 export function buildDualModeContext(
   theme: ThemeJson
-): DualModeTemplateContext | null {
+): ExtendedDualModeContext | null {
   if (!theme.dark || !theme.light) {
     return null;
   }
@@ -154,7 +159,7 @@ export async function renderTemplateFile(
         throw new Error(`Theme '${theme.title}' does not have any palette`);
       }
       const context = buildTemplateContext(theme, palette, mode);
-      const fallbackDualContext: DualModeTemplateContext = {
+      const fallbackDualContext: ExtendedDualModeContext = {
         dark: context,
         light: context,
         theme: buildThemeMetadata(theme, mode),
@@ -229,34 +234,6 @@ export async function writeRenderedTemplates(
 }
 
 /**
- * Generates Neovim configuration if theme has neovim config
- */
-export async function generateNeovimConfigFile(
-  theme: ThemeJson,
-  mode: ThemeMode
-): Promise<RenderResult | null> {
-  if (!hasNeovimConfig(theme)) {
-    return null;
-  }
-
-  const content = generateNeovimConfig(theme, mode);
-  const outputPath = join(GENERATED_DIR, "neovim.lua");
-
-  await writeFile(outputPath, content);
-
-  return {
-    template: {
-      name: "neovim.lua",
-      path: "",
-      outputName: "neovim.lua",
-      type: "single",
-    },
-    content,
-    outputPath,
-  };
-}
-
-/**
  * Full pipeline: render all templates and write to generated directory
  */
 export async function generateThemeConfigs(
@@ -265,13 +242,6 @@ export async function generateThemeConfigs(
 ): Promise<RenderResult[]> {
   const results = await renderAllTemplates(theme, mode);
   await writeRenderedTemplates(results);
-
-  // Generate Neovim config if available
-  const neovimResult = await generateNeovimConfigFile(theme, mode);
-  if (neovimResult) {
-    results.push(neovimResult);
-  }
-
   return results;
 }
 

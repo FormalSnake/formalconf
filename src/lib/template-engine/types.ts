@@ -101,13 +101,27 @@ export interface TemplatesManifest {
 }
 
 /**
+ * Bundled template metadata (single source of truth for template behavior)
+ */
+export interface BundledTemplateMetadata {
+  /** Template version for update tracking */
+  version: string;
+  /** Custom output filename (default: strip .template extension) */
+  output?: string;
+  /** Additional copy destinations (supports ~ expansion) */
+  targets?: string[];
+  /** Override auto-detection of template mode */
+  mode?: TemplateType;
+}
+
+/**
  * Bundled templates manifest (simpler, no customOverride)
  */
 export interface BundledTemplatesManifest {
   /** Manifest schema version */
   version: number;
-  /** Map of template filename to version only */
-  templates: Record<string, { version: string }>;
+  /** Map of template filename to metadata */
+  templates: Record<string, BundledTemplateMetadata>;
 }
 
 /**
@@ -124,6 +138,8 @@ export interface TemplateFile {
   type: TemplateType;
   /** Mode for partial templates (dark or light suffix) */
   partialMode?: ThemeMode;
+  /** Additional copy destinations (supports ~ expansion) */
+  targets?: string[];
 }
 
 /**

@@ -194,15 +194,18 @@ export async function unlockTemplate(templateName: string): Promise<void> {
 }
 
 /**
- * Determines template type from filename
+ * Determines template type from manifest or filename
  */
-export function getTemplateType(filename: string): TemplateType {
-  // Dual-mode templates contain both light and dark
-  const dualModeTemplates = ["ghostty.conf.template", "neovim.lua.template", "lynk.css.template"];
-  if (dualModeTemplates.includes(filename)) {
-    return "dual";
+export async function getTemplateType(filename: string): Promise<TemplateType> {
+  const manifest = await loadBundledManifest();
+  const meta = manifest.templates[filename];
+
+  // If manifest specifies mode, use it
+  if (meta?.mode) {
+    return meta.mode;
   }
 
+  // Fallback: detect from filename
   // Partial-mode templates have -dark or -light suffix
   if (filename.includes("-dark.") || filename.includes("-light.")) {
     return "partial";
@@ -222,45 +225,28 @@ export function getPartialMode(filename: string): ThemeMode | undefined {
 }
 
 /**
- * Gets the output filename from a template filename
+ * Gets the output filename from manifest or by stripping .template
  */
-export function getOutputFilename(templateName: string): string {
-  // Remove .template extension
-  let output = templateName.replace(/\.template$/, "");
+export async function getOutputFilename(templateName: string): Promise<string> {
+  const manifest = await loadBundledManifest();
+  const meta = manifest.templates[templateName];
 
-  // Kitty: separate theme files for auto-switching
-  if (templateName.startsWith("kitty-dark")) {
-    return "dark-theme.auto.conf";
-  }
-  if (templateName.startsWith("kitty-light")) {
-    return "light-theme.auto.conf";
+  // If manifest specifies output, use it
+  if (meta?.output) {
+    return meta.output;
   }
 
-  // Waybar: separate style files for light/dark
-  if (templateName.startsWith("waybar-dark")) {
-    return "style-dark.css";
-  }
-  if (templateName.startsWith("waybar-light")) {
-    return "style-light.css";
-  }
+  // Default: strip .template extension
+  return templateName.replace(/\.template$/, "");
+}
 
-  // Ghostty theme files: output as formalconf-dark/formalconf-light
-  if (templateName === "ghostty-dark.theme.template") {
-    return "formalconf-dark";
-  }
-  if (templateName === "ghostty-light.theme.template") {
-    return "formalconf-light";
-  }
-
-  // Btop: separate theme files
-  if (templateName.startsWith("btop-dark")) {
-    return "formalconf-dark.theme";
-  }
-  if (templateName.startsWith("btop-light")) {
-    return "formalconf-light.theme";
-  }
-
-  return output;
+/**
+ * Gets additional copy targets from manifest
+ */
+export async function getTemplateTargets(templateName: string): Promise<string[]> {
+  const manifest = await loadBundledManifest();
+  const meta = manifest.templates[templateName];
+  return meta?.targets ?? [];
 }
 
 /**
@@ -279,9 +265,10 @@ export async function listInstalledTemplates(): Promise<TemplateFile[]> {
       templates.push({
         name: entry.name,
         path: join(TEMPLATES_DIR, entry.name),
-        outputName: getOutputFilename(entry.name),
-        type: getTemplateType(entry.name),
+        outputName: await getOutputFilename(entry.name),
+        type: await getTemplateType(entry.name),
         partialMode: getPartialMode(entry.name),
+        targets: await getTemplateTargets(entry.name),
       });
     }
   }
@@ -305,9 +292,10 @@ export async function listBundledTemplates(): Promise<TemplateFile[]> {
       templates.push({
         name: entry.name,
         path: join(BUNDLED_TEMPLATES_DIR, entry.name),
-        outputName: getOutputFilename(entry.name),
-        type: getTemplateType(entry.name),
+        outputName: await getOutputFilename(entry.name),
+        type: await getTemplateType(entry.name),
         partialMode: getPartialMode(entry.name),
+        targets: await getTemplateTargets(entry.name),
       });
     }
   }

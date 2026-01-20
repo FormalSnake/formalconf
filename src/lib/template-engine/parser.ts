@@ -2,7 +2,10 @@
  * Template Parser
  *
  * Parses template files and extracts variable references.
- * Template syntax: {{variable}} or {{variable.modifier}}
+ * Template syntax:
+ *   - {{variable}} or {{variable.modifier}} - Variable substitution
+ *   - {{#if variable}}...{{/if}} - Conditional block (include if truthy)
+ *   - {{#unless variable}}...{{/unless}} - Conditional block (include if falsy)
  */
 
 import type { TemplateContext, DualModeTemplateContext } from "./types";
@@ -50,10 +53,68 @@ function isColorVariable(name: string): name is ColorVariableName {
 }
 
 /**
+ * Gets a nested value from an object using dot notation
+ */
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  return path.split(".").reduce<unknown>((acc, key) => {
+    if (acc && typeof acc === "object" && key in (acc as Record<string, unknown>)) {
+      return (acc as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, obj);
+}
+
+/**
+ * Processes conditional blocks in a template
+ * Supports {{#if variable}}...{{/if}} and {{#unless variable}}...{{/unless}}
+ */
+function processConditionals(template: string, context: Record<string, unknown>): string {
+  // Handle {{#if variable}}...{{/if}}
+  template = template.replace(
+    /\{\{#if\s+(\S+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
+    (_, variable: string, content: string) => {
+      const value = getNestedValue(context, variable);
+      return value ? content : "";
+    }
+  );
+
+  // Handle {{#unless variable}}...{{/unless}}
+  template = template.replace(
+    /\{\{#unless\s+(\S+)\}\}([\s\S]*?)\{\{\/unless\}\}/g,
+    (_, variable: string, content: string) => {
+      const value = getNestedValue(context, variable);
+      return !value ? content : "";
+    }
+  );
+
+  return template;
+}
+
+/**
+ * Extended context that includes optional neovim config
+ */
+export interface ExtendedTemplateContext extends TemplateContext {
+  neovim?: {
+    repo?: string;
+    colorscheme?: string;
+    light_colorscheme?: string;
+    opts?: Record<string, unknown>;
+  };
+}
+
+/**
+ * Extended dual-mode context
+ */
+export interface ExtendedDualModeContext extends DualModeTemplateContext {
+  dark: ExtendedTemplateContext;
+  light: ExtendedTemplateContext;
+}
+
+/**
  * Gets a value from the template context
  */
 function getContextValue(
-  context: TemplateContext,
+  context: ExtendedTemplateContext,
   variableName: string,
   modifier?: string
 ): string | undefined {
@@ -68,6 +129,14 @@ function getContextValue(
   if (variableName.startsWith("gtk.")) {
     const key = variableName.slice(4) as keyof TemplateContext["gtk"];
     const value = context.gtk[key];
+    return value !== undefined ? String(value) : undefined;
+  }
+
+  // Handle neovim config access
+  if (variableName.startsWith("neovim.")) {
+    if (!context.neovim) return undefined;
+    const key = variableName.slice(7) as keyof NonNullable<ExtendedTemplateContext["neovim"]>;
+    const value = context.neovim[key];
     return value !== undefined ? String(value) : undefined;
   }
 
@@ -90,9 +159,13 @@ function getContextValue(
  */
 export function renderTemplate(
   template: string,
-  context: TemplateContext
+  context: ExtendedTemplateContext
 ): string {
-  return template.replace(VARIABLE_REGEX, (match, variable: string) => {
+  // First pass: process conditionals
+  let result = processConditionals(template, context as unknown as Record<string, unknown>);
+
+  // Second pass: variable substitution
+  result = result.replace(VARIABLE_REGEX, (match, variable: string) => {
     const { name, modifier } = parseVariableReference(variable);
     const value = getContextValue(context, name, modifier);
 
@@ -103,6 +176,8 @@ export function renderTemplate(
 
     return value;
   });
+
+  return result;
 }
 
 /**
@@ -111,10 +186,13 @@ export function renderTemplate(
  */
 export function renderDualModeTemplate(
   template: string,
-  contexts: DualModeTemplateContext
+  contexts: ExtendedDualModeContext
 ): string {
-  // First pass: render with dark context for {{dark.variable}}
-  let result = template.replace(
+  // First pass: process conditionals using dark context as primary
+  let result = processConditionals(template, contexts as unknown as Record<string, unknown>);
+
+  // Second pass: render with dark context for {{dark.variable}}
+  result = result.replace(
     /\{\{dark\.([a-zA-Z0-9_.]+)\}\}/g,
     (match, variable: string) => {
       const { name, modifier } = parseVariableReference(variable);
@@ -123,7 +201,7 @@ export function renderDualModeTemplate(
     }
   );
 
-  // Second pass: render with light context for {{light.variable}}
+  // Third pass: render with light context for {{light.variable}}
   result = result.replace(
     /\{\{light\.([a-zA-Z0-9_.]+)\}\}/g,
     (match, variable: string) => {
@@ -133,7 +211,7 @@ export function renderDualModeTemplate(
     }
   );
 
-  // Third pass: render theme metadata (shared)
+  // Fourth pass: render theme metadata (shared)
   result = result.replace(
     /\{\{theme\.([a-zA-Z0-9_]+)\}\}/g,
     (match, key: string) => {

@@ -223,17 +223,16 @@ async function applyJsonTheme(
   // Generate and write theme configs
   const results = await generateThemeConfigs(theme, mode);
 
-  // Ghostty themes directory
-  const ghosttyThemesDir = join(HOME_DIR, ".config", "ghostty", "themes");
-
   // Copy generated files to appropriate destinations
   for (const result of results) {
     const filename = basename(result.outputPath);
 
-    // Ghostty theme files go to ~/.config/ghostty/themes/
-    if (filename === "formalconf-dark" || filename === "formalconf-light") {
-      await ensureDir(ghosttyThemesDir);
-      const targetPath = join(ghosttyThemesDir, filename);
+    // Copy to additional targets defined in template manifest
+    const templateTargets = result.template.targets ?? [];
+    for (const target of templateTargets) {
+      const expandedTarget = target.replace(/^~/, HOME_DIR);
+      await ensureDir(expandedTarget);
+      const targetPath = join(expandedTarget, filename);
       copyFileSync(result.outputPath, targetPath);
     }
 
