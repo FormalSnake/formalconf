@@ -2,12 +2,17 @@ import React from "react";
 import { Box, Text } from "ink";
 import { colors, borderStyles } from "../lib/theme";
 import type { Theme } from "../types/theme";
+import type { UnifiedThemeEntry } from "../cli/set-theme";
 
 interface ThemeCardProps {
-  theme: Theme;
+  theme: Theme | UnifiedThemeEntry;
   isSelected: boolean;
   width: number;
   isDeviceTheme?: boolean;
+}
+
+function isLegacyTheme(theme: Theme | UnifiedThemeEntry): theme is Theme {
+  return "files" in theme;
 }
 
 export function ThemeCard({ theme, isSelected, width, isDeviceTheme }: ThemeCardProps) {
@@ -16,10 +21,21 @@ export function ThemeCard({ theme, isSelected, width, isDeviceTheme }: ThemeCard
 
   const indicators: string[] = [];
   if (isDeviceTheme) indicators.push("device");
-  if (theme.hasBackgrounds) indicators.push("bg");
-  if (theme.isLightMode) indicators.push("light");
+
+  if (isLegacyTheme(theme)) {
+    // Legacy theme indicators
+    if (theme.hasBackgrounds) indicators.push("bg");
+    if (theme.isLightMode) indicators.push("light");
+  } else {
+    // Unified theme entry indicators
+    if (theme.type === "json") indicators.push("json");
+    if (theme.hasBackgrounds) indicators.push("bg");
+    if (theme.isLightMode) indicators.push("light");
+  }
 
   const indicatorText = indicators.length > 0 ? ` [${indicators.join(" ")}]` : "";
+
+  const displayName = isLegacyTheme(theme) ? theme.name : theme.displayName;
 
   return (
     <Box
@@ -34,7 +50,7 @@ export function ThemeCard({ theme, isSelected, width, isDeviceTheme }: ThemeCard
           {isSelected ? "● " : "  "}
         </Text>
         <Text color={nameColor} bold wrap="truncate">
-          {theme.name}
+          {displayName}
         </Text>
         <Text color={colors.primaryDim}>{indicatorText}</Text>
       </Box>

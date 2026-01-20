@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "templates": {
+    "alacritty.toml.template": { "version": "1.0.0" },
+    "kitty-dark.conf.template": { "version": "1.0.0" },
+    "kitty-light.conf.template": { "version": "1.0.0" },
+    "ghostty.conf.template": { "version": "1.0.0" },
+    "ghostty-dark.theme.template": { "version": "1.0.0" },
+    "ghostty-light.theme.template": { "version": "1.0.0" },
+    "btop-dark.theme.template": { "version": "1.0.0" },
+    "btop-light.theme.template": { "version": "1.0.0" },
+    "waybar-dark.css.template": { "version": "1.0.0" },
+    "waybar-light.css.template": { "version": "1.0.0" },
+    "wofi.css.template": { "version": "1.0.0" },
+    "walker.css.template": { "version": "1.0.0" },
+    "hyprland.conf.template": { "version": "1.0.0" },
+    "hyprlock.conf.template": { "version": "1.0.0" },
+    "mako.ini.template": { "version": "1.0.0" },
+    "swayosd.css.template": { "version": "1.0.0" }
+  }
+}

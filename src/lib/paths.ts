@@ -18,6 +18,17 @@ export const PKG_CONFIG_PATH = join(CONFIG_DIR, "pkg-config.json");
 export const PKG_LOCK_PATH = join(CONFIG_DIR, "pkg-lock.json");
 export const THEME_CONFIG_PATH = join(CONFIG_DIR, "theme-config.json");
 
+// Theme V2: Template-based system
+export const TEMPLATES_DIR = join(CONFIG_DIR, "templates");
+export const TEMPLATES_MANIFEST_PATH = join(TEMPLATES_DIR, "templates.json");
+export const GENERATED_DIR = join(CONFIG_DIR, "generated");
+export const BUNDLED_TEMPLATES_DIR = join(ROOT_DIR, "templates");
+export const BUNDLED_MANIFEST_PATH = join(BUNDLED_TEMPLATES_DIR, "templates.json");
+
+// GTK Theme Support (Phase 2 - Linux only)
+export const GTK_DIR = join(CONFIG_DIR, "gtk");
+export const COLLOID_DIR = join(GTK_DIR, "colloid-gtk-theme");
+
 export async function ensureDir(path: string): Promise<void> {
   await runtimeEnsureDir(path);
 }
@@ -28,6 +39,8 @@ export async function ensureConfigDir(): Promise<void> {
   await ensureDir(THEMES_DIR);
   await ensureDir(THEME_TARGET_DIR);
   await ensureDir(BACKGROUNDS_TARGET_DIR);
+  await ensureDir(TEMPLATES_DIR);
+  await ensureDir(GENERATED_DIR);
 }
 
 async function dirHasContents(path: string): Promise<boolean> {

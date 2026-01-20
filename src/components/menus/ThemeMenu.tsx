@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Box, Text } from "ink";
-import { existsSync, readdirSync } from "fs";
-import { join } from "path";
 import { VimSelect } from "../ui/VimSelect";
 import { Panel } from "../layout/Panel";
 import { CommandOutput } from "../CommandOutput";
@@ -9,19 +7,17 @@ import { LoadingPanel } from "../LoadingPanel";
 import { ThemeCard } from "../ThemeCard";
 import { useMenuAction } from "../../hooks/useMenuAction";
 import { useThemeGrid } from "../../hooks/useThemeGrid";
-import { THEMES_DIR } from "../../lib/paths";
-import { parseTheme } from "../../lib/theme-parser";
 import { colors } from "../../lib/theme";
-import { runSetTheme } from "../../cli/set-theme";
+import { runSetTheme, listAllThemes } from "../../cli/set-theme";
+import type { UnifiedThemeEntry } from "../../cli/set-theme";
 import { getDeviceHostname, getDeviceTheme } from "../../lib/theme-config";
-import type { Theme } from "../../types/theme";
 
 interface ThemeMenuProps {
   onBack: () => void;
 }
 
 export function ThemeMenu({ onBack }: ThemeMenuProps) {
-  const [themes, setThemes] = useState<Theme[]>([]);
+  const [themes, setThemes] = useState<UnifiedThemeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [deviceTheme, setDeviceThemeName] = useState<string | null>(null);
   const { state, output, success, isRunning, isResult, execute, reset } = useMenuAction();
@@ -38,23 +34,7 @@ export function ThemeMenu({ onBack }: ThemeMenuProps) {
 
   useEffect(() => {
     async function loadThemes() {
-      if (!existsSync(THEMES_DIR)) {
-        setThemes([]);
-        setLoading(false);
-        return;
-      }
-
-      const entries = readdirSync(THEMES_DIR, { withFileTypes: true });
-      const loadedThemes: Theme[] = [];
-
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          const themePath = join(THEMES_DIR, entry.name);
-          const theme = await parseTheme(themePath, entry.name);
-          loadedThemes.push(theme);
-        }
-      }
-
+      const loadedThemes = await listAllThemes();
       setThemes(loadedThemes);
       setDeviceThemeName(getDeviceTheme());
       setLoading(false);
@@ -63,11 +43,10 @@ export function ThemeMenu({ onBack }: ThemeMenuProps) {
     loadThemes();
   }, []);
 
-  const applyTheme = async (theme: Theme, saveAsDeviceDefault: boolean) => {
-    const themeName = theme.path.split("/").pop()!;
-    await execute(() => runSetTheme(themeName, saveAsDeviceDefault));
+  const applyTheme = async (theme: UnifiedThemeEntry, saveAsDeviceDefault: boolean) => {
+    await execute(() => runSetTheme(theme.identifier, saveAsDeviceDefault));
     if (saveAsDeviceDefault) {
-      setDeviceThemeName(themeName);
+      setDeviceThemeName(theme.identifier);
     }
   };
 
@@ -100,8 +79,9 @@ export function ThemeMenu({ onBack }: ThemeMenuProps) {
       <Panel title="Select Theme">
         <Box flexDirection="column">
           <Text color={colors.warning}>No themes available.</Text>
-          <Text>This system is compatible with omarchy themes.</Text>
-          <Text dimColor>Add themes to ~/.config/formalconf/themes/</Text>
+          <Text>Add themes to one of the following locations:</Text>
+          <Text dimColor>  JSON themes: ~/.config/formalconf/themes/*.json</Text>
+          <Text dimColor>  Legacy themes: ~/.config/formalconf/themes/name/</Text>
         </Box>
         <Box marginTop={1}>
           <VimSelect options={[{ label: "Back", value: "back" }]} onChange={() => onBack()} />
@@ -120,11 +100,11 @@ export function ThemeMenu({ onBack }: ThemeMenuProps) {
       <Box flexDirection="row" flexWrap="wrap" height={grid.gridHeight} overflow="hidden">
         {visibleThemes.map((theme, index) => (
           <ThemeCard
-            key={theme.path}
+            key={theme.identifier}
             theme={theme}
             isSelected={grid.visibleStartIndex + index === grid.selectedIndex}
             width={grid.cardWidth}
-            isDeviceTheme={theme.name === deviceTheme}
+            isDeviceTheme={theme.identifier === deviceTheme}
           />
         ))}
       </Box>

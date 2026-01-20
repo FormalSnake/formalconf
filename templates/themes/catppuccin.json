@@ -1,0 +1,69 @@
+{
+  "title": "Catppuccin",
+  "description": "Soothing pastel theme for the high-spirited",
+  "author": "Catppuccin Org",
+  "version": "1.0.0",
+  "source": "https://github.com/catppuccin/catppuccin",
+  "dark": {
+    "color0": "#45475a",
+    "color1": "#f38ba8",
+    "color2": "#a6e3a1",
+    "color3": "#f9e2af",
+    "color4": "#89b4fa",
+    "color5": "#f5c2e7",
+    "color6": "#94e2d5",
+    "color7": "#bac2de",
+    "color8": "#585b70",
+    "color9": "#f38ba8",
+    "color10": "#a6e3a1",
+    "color11": "#f9e2af",
+    "color12": "#89b4fa",
+    "color13": "#f5c2e7",
+    "color14": "#94e2d5",
+    "color15": "#a6adc8",
+    "background": "#1e1e2e",
+    "foreground": "#cdd6f4",
+    "cursor": "#f5e0dc",
+    "selection_background": "#45475a",
+    "selection_foreground": "#cdd6f4",
+    "accent": "#cba6f7",
+    "border": "#313244"
+  },
+  "light": {
+    "color0": "#5c5f77",
+    "color1": "#d20f39",
+    "color2": "#40a02b",
+    "color3": "#df8e1d",
+    "color4": "#1e66f5",
+    "color5": "#ea76cb",
+    "color6": "#179299",
+    "color7": "#acb0be",
+    "color8": "#6c6f85",
+    "color9": "#d20f39",
+    "color10": "#40a02b",
+    "color11": "#df8e1d",
+    "color12": "#1e66f5",
+    "color13": "#ea76cb",
+    "color14": "#179299",
+    "color15": "#bcc0cc",
+    "background": "#eff1f5",
+    "foreground": "#4c4f69",
+    "cursor": "#dc8a78",
+    "selection_background": "#ccd0da",
+    "selection_foreground": "#4c4f69",
+    "accent": "#8839ef",
+    "border": "#ccd0da"
+  },
+  "neovim": {
+    "repo": "catppuccin/nvim",
+    "colorscheme": "catppuccin-mocha",
+    "light_colorscheme": "catppuccin-latte",
+    "opts": {
+      "flavour": "auto",
+      "background": {
+        "light": "latte",
+        "dark": "mocha"
+      }
+    }
+  }
+}
