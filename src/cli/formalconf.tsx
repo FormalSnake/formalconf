@@ -22,6 +22,7 @@ Usage:
   formalconf theme <name>       Apply a theme (e.g., nord:dark)
   formalconf config <cmd>       Config management (stow, unstow, status, list)
   formalconf pkg-sync [flags]   Sync packages from pkg-config.json
+  formalconf template <cmd>     Template management (update, list, check)
 
 Options:
   -h, --help                    Show this help message
@@ -30,6 +31,7 @@ Examples:
   formalconf theme nord:dark
   formalconf config stow nvim
   formalconf pkg-sync --purge
+  formalconf template update --all
 `);
 }
 
@@ -126,6 +128,7 @@ async function main() {
       theme: "set-theme",
       config: "config-manager",
       "pkg-sync": "pkg-sync",
+      template: "template-manager",
     };
 
     const scriptName = scriptMap[subcommand];
@@ -151,6 +154,11 @@ async function main() {
       }
       case "pkg-sync": {
         const { main } = await import("./pkg-sync");
+        await main();
+        break;
+      }
+      case "template": {
+        const { main } = await import("./template-manager");
         await main();
         break;
       }

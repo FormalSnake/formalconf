@@ -150,6 +150,7 @@ export async function installTemplate(templateName: string): Promise<void> {
     version: bundledMeta.version,
     installedAt: new Date().toISOString(),
     customOverride: false,
+    mode: bundledMeta.mode,
   };
   await saveTemplatesManifest(manifest);
 }
@@ -197,12 +198,18 @@ export async function unlockTemplate(templateName: string): Promise<void> {
  * Determines template type from manifest or filename
  */
 export async function getTemplateType(filename: string): Promise<TemplateType> {
-  const manifest = await loadBundledManifest();
-  const meta = manifest.templates[filename];
+  // First check user's installed manifest (has persisted mode info)
+  const installed = await loadTemplatesManifest();
+  const installedMeta = installed.templates[filename];
+  if (installedMeta?.mode) {
+    return installedMeta.mode;
+  }
 
-  // If manifest specifies mode, use it
-  if (meta?.mode) {
-    return meta.mode;
+  // Fallback to bundled manifest
+  const bundled = await loadBundledManifest();
+  const bundledMeta = bundled.templates[filename];
+  if (bundledMeta?.mode) {
+    return bundledMeta.mode;
   }
 
   // Fallback: detect from filename

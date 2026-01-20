@@ -88,6 +88,8 @@ export interface TemplateMetadata {
   installedAt: string;
   /** If true, user has customized - skip update prompts */
   customOverride: boolean;
+  /** Template type for rendering (dual, single, partial) */
+  mode?: TemplateType;
 }
 
 /**
