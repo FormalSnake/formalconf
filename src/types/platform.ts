@@ -18,7 +18,8 @@ export type PackageManagerType =
   | "aur"
   | "apt"
   | "dnf"
-  | "flatpak";
+  | "flatpak"
+  | "cargo";
 
 export interface PlatformInfo {
   os: OperatingSystem;

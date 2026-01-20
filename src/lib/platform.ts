@@ -115,6 +115,11 @@ export async function detectAvailablePackageManagers(): Promise<PackageManagerTy
     }
   }
 
+  // Cargo is cross-platform
+  if (await commandExists("cargo")) {
+    managers.push("cargo");
+  }
+
   return managers;
 }
 

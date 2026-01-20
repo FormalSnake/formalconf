@@ -31,6 +31,7 @@ export interface PkgConfigSettingsV2 {
 
 export interface GlobalPackages {
   packages: string[];
+  cargo?: string[];
 }
 
 export interface MacOSPackages {
@@ -38,11 +39,13 @@ export interface MacOSPackages {
   formulas?: string[];
   casks?: string[];
   mas?: Record<string, number>;
+  cargo?: string[];
 }
 
 export interface LinuxPackages {
   packages?: string[];
   flatpak?: string[];
+  cargo?: string[];
 }
 
 export interface ArchPackages {

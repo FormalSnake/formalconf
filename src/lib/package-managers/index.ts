@@ -7,6 +7,7 @@ import { AurPackageManager } from "./aur";
 import { Apt } from "./apt";
 import { Dnf } from "./dnf";
 import { Flatpak } from "./flatpak";
+import { Cargo } from "./cargo";
 import { getPlatformInfo } from "../platform";
 
 export type { PackageManager, PackageInfo, UpgradeInfo, PackageManagerCallbacks, LockedPackageInfo } from "./types";
@@ -17,6 +18,7 @@ export { AurPackageManager } from "./aur";
 export { Apt } from "./apt";
 export { Dnf } from "./dnf";
 export { Flatpak } from "./flatpak";
+export { Cargo } from "./cargo";
 
 // Extended type to differentiate homebrew sub-types
 export type ExtendedPackageManagerType = PackageManagerType | "homebrew-casks";
@@ -53,6 +55,9 @@ export function getPackageManager(type: ExtendedPackageManagerType): PackageMana
       break;
     case "flatpak":
       manager = new Flatpak();
+      break;
+    case "cargo":
+      manager = new Cargo();
       break;
     default:
       throw new Error(`Unknown package manager type: ${type}`);
@@ -102,6 +107,8 @@ export function getManagerDisplayName(type: ExtendedPackageManagerType): string 
       return "DNF";
     case "flatpak":
       return "Flatpak";
+    case "cargo":
+      return "Cargo";
     default:
       return type;
   }

@@ -15,6 +15,7 @@ import {
   Apt,
   Dnf,
   Flatpak,
+  Cargo,
 } from "../lib/package-managers";
 import type { PackageManager, PackageManagerCallbacks } from "../lib/package-managers";
 import type { PkgConfigV2, MasApp } from "../types/pkg-config";
@@ -121,6 +122,18 @@ async function getPackageSetsForPlatform(
         packages: masIds,
       });
     }
+
+    // Cargo (cross-platform)
+    const cargo = getPackageManager("cargo") as Cargo;
+    const globalCargo = config.global?.cargo || [];
+    const macosCargo = config.macos?.cargo || [];
+    const allMacosCargo = [...globalCargo, ...macosCargo];
+    if (allMacosCargo.length > 0 && (await cargo.isAvailable())) {
+      sets.push({
+        manager: cargo,
+        packages: allMacosCargo,
+      });
+    }
   } else {
     // Linux
     const distro = platform.distro;
@@ -204,6 +217,18 @@ async function getPackageSetsForPlatform(
       sets.push({
         manager: flatpak,
         packages: flatpakApps,
+      });
+    }
+
+    // Cargo (cross-platform)
+    const cargo = getPackageManager("cargo") as Cargo;
+    const globalCargo = config.global?.cargo || [];
+    const linuxCargo = config.linux?.cargo || [];
+    const allLinuxCargo = [...globalCargo, ...linuxCargo];
+    if (allLinuxCargo.length > 0 && (await cargo.isAvailable())) {
+      sets.push({
+        manager: cargo,
+        packages: allLinuxCargo,
       });
     }
   }
