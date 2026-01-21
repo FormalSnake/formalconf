@@ -34,11 +34,11 @@
     },
     "waybar-dark.css.template": {
       "version": "1.0.0",
-      "output": "style-dark.css"
+      "output": "waybar-dark.css"
     },
     "waybar-light.css.template": {
       "version": "1.0.0",
-      "output": "style-light.css"
+      "output": "waybar-light.css"
     },
     "wofi.css.template": { "version": "1.0.0" },
     "walker.css.template": { "version": "1.0.0" },
