@@ -251,9 +251,17 @@ export async function getOutputFilename(templateName: string): Promise<string> {
  * Gets additional copy targets from manifest
  */
 export async function getTemplateTargets(templateName: string): Promise<string[]> {
-  const manifest = await loadBundledManifest();
-  const meta = manifest.templates[templateName];
-  return meta?.targets ?? [];
+  // Check user's installed manifest first (supports custom templates)
+  const installed = await loadTemplatesManifest();
+  const installedMeta = installed.templates[templateName];
+  if (installedMeta?.targets) {
+    return installedMeta.targets;
+  }
+
+  // Fall back to bundled manifest
+  const bundled = await loadBundledManifest();
+  const bundledMeta = bundled.templates[templateName];
+  return bundledMeta?.targets ?? [];
 }
 
 /**

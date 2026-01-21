@@ -22,6 +22,8 @@ export interface ColorVariable {
   rgb: string;
   /** CSS rgba() format, e.g., "rgba(255,0,255,1)" */
   rgba: string;
+  /** Comma-separated decimal RGB, e.g., "255,0,255" */
+  decimal: string;
   /** Red component 0-255 */
   r: number;
   /** Green component 0-255 */
@@ -91,6 +93,7 @@ export function hexToColorVariable(hex: string): ColorVariable {
     strip: normalized.slice(1),
     rgb: `rgb(${r},${g},${b})`,
     rgba: `rgba(${r},${g},${b},1)`,
+    decimal: `${r},${g},${b}`,
     r,
     g,
     b,
@@ -126,6 +129,8 @@ export function getColorModifier(
       return color.rgb;
     case "rgba":
       return color.rgba;
+    case "decimal":
+      return color.decimal;
     case "r":
       return color.r;
     case "g":

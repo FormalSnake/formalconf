@@ -2,7 +2,7 @@
  * Template Color Modifiers
  *
  * Handles extracting specific color format from ColorVariable based on modifier.
- * Modifiers: .strip, .rgb, .rgba, .r, .g, .b, .red, .green, .blue
+ * Modifiers: .strip, .rgb, .rgba, .decimal, .r, .g, .b, .red, .green, .blue
  */
 
 import type { ColorVariable } from "../theme-v2/color";
@@ -15,6 +15,7 @@ export const VALID_MODIFIERS = [
   "strip",
   "rgb",
   "rgba",
+  "decimal",
   "r",
   "g",
   "b",
@@ -56,6 +57,8 @@ export function applyModifier(
       return color.rgb;
     case "rgba":
       return color.rgba;
+    case "decimal":
+      return color.decimal;
     case "r":
       return String(color.r);
     case "g":

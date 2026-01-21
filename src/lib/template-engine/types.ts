@@ -90,6 +90,8 @@ export interface TemplateMetadata {
   customOverride: boolean;
   /** Template type for rendering (dual, single, partial) */
   mode?: TemplateType;
+  /** Additional directories to copy the generated file to */
+  targets?: string[];
 }
 
 /**
